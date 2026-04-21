@@ -5,7 +5,7 @@ namespace Schedule.Models
     public class Letter
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int SectorId { get; set; }
         public Sector? Sector { get; set; }
 

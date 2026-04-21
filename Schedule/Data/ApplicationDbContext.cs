@@ -13,5 +13,7 @@ namespace Schedule.Data
         public DbSet<Company> Companies { get; set; }
         public DbSet<Sector> Sectors { get; set; }
         public DbSet<Letter> Letters { get; set; }
+
+        public DbSet<Shift> Shifts { get; set; }
     }
 }
