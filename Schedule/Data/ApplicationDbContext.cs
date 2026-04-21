@@ -15,5 +15,6 @@ namespace Schedule.Data
         public DbSet<Letter> Letters { get; set; }
 
         public DbSet<Shift> Shifts { get; set; }
+        public DbSet<ScheduleDay> ScheduleDays { get; set; }
     }
 }
