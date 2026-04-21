@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Schedule.Data;
 using Schedule.Models;
+using Schedule.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     // Ensina o tradutor a ignorar o loop infinito das chaves estrangeiras
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
+builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(); // Isso habilita a geração do Swagger
 
