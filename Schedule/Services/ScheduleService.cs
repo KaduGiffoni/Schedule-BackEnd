@@ -1,6 +1,7 @@
 ﻿using Schedule.Models;
 using Schedule.Data;
 using Schedule.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace Schedule.Services
 {
@@ -29,13 +30,36 @@ namespace Schedule.Services
                     Date = currentDate,
                     LetterId = requestDTO.LetterId,
                     ShiftId = currentShiftId
-                };
+                }; 
+
+                scheduleDaysToInsert.Add(scedule);
             }
 
             _context.ScheduleDays.AddRange(scheduleDaysToInsert);
             await _context.SaveChangesAsync();
         }
 
-        
+        public async Task<List<ScheduleDay>> GetScheduleByMonthAsync(int letterId, int year, int month)
+        {
+            var schedule = await _context.ScheduleDays
+                .Include(s => s.Shift)
+                .Where(s => s.LetterId == letterId && s.Date.Month == month && s.Date.Year == year)
+                .OrderBy(s => s.Date)
+                .Select(s => new ScheduleResponseDTO
+                {
+                    Id = s.Id,
+                    Date = s.Date,
+                    ShiftName = s.Shift.Name,
+                    StartTime = s.Shift.StartTime,
+                    EndTime = s.Shift.EndTime,
+                    IsDayOff = s.Shift.IsDayOff
+
+                }).ToListAsync();
+
+            return schedule;
+
+        }
+
+
     }
 }

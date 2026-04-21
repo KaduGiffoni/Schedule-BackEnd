@@ -34,5 +34,23 @@ namespace Schedule.Controllers
             return Ok(new { Mensagem = "Escala gerada com sucesso!" });
         }
 
+        [HttpGet("letter/{letterId}")]
+        public async Task<IActionResult> GetScheduleByMonth(int letterId, [FromQuery] int year, [FromQuery] int month)
+        {
+            if (month < 1 || month > 12)
+            {
+                return BadRequest("Mês inválido. Informe um número de 1 a 12.");
+            }
+
+            var schedule = await _scheduleService.GetScheduleByMonthAsync(letterId, year, month);
+
+            if (schedule.Count == 0)
+            {
+                return NotFound("Nenhuma escala encontrada para esta letra neste mês.");
+            }
+
+            return Ok(schedule);
+        }
+
     }
 }
