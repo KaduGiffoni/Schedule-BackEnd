@@ -13,6 +13,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 builder.Services.AddScoped<ScheduleService>();
+builder.Services.AddScoped<SwapRequestService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(); // Isso habilita a geração do Swagger
 

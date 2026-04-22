@@ -39,7 +39,7 @@ namespace Schedule.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<ScheduleDay>> GetScheduleByMonthAsync(int letterId, int year, int month)
+        public async Task<List<ScheduleResponseDTO>> GetScheduleByMonthAsync(int letterId, int year, int month)
         {
             var schedule = await _context.ScheduleDays
                 .Include(s => s.Shift)
