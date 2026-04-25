@@ -41,12 +41,7 @@ namespace Schedule.Services
 
             if (accept)
             {
-                request.Status = RequestStatus.Approved;
-
-                if (request.ScheduleDay != null)
-                {
-                    request.ScheduleDay.LetterId = 0; // Lógica temporária
-                }
+                request.Status = RequestStatus.Approved;            
             }
             else
             {
@@ -54,6 +49,15 @@ namespace Schedule.Services
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<SwapRequest>> GetPendingRequestsAsync(string targetUserId)
+        {
+            return await _context.SwapRequests
+                .Include(r => r.ScheduleDay)
+                .ThenInclude(sd => sd.Shift) 
+                .Where(r => r.TargetUserId == targetUserId && r.Status == RequestStatus.Pending)
+                .ToListAsync();
         }
     }
 }

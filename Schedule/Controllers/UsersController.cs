@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Schedule.Models;
 
 namespace Schedule.Controllers
@@ -34,16 +35,51 @@ namespace Schedule.Controllers
 
             if (result.Succeeded)
             {
-                return Ok (new {
+                return Ok(new
+                {
                     Message = "Perfil atualizado com sucesso.",
                     User = user.Email,
                     LetterId = user.LetterId,
                 });
 
             }
-               return BadRequest(result.Errors); 
+            return BadRequest(result.Errors);
 
         }
-           
-}
+
+        [HttpGet("get-user")]
+
+        public async Task<IActionResult> GetUserByEmail(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound("Usuário não encontrado. Verifique o e-mail digitado.");
+            }
+            return Ok(new
+            {
+                UserId = user.Id,
+                User = user.Email,
+                LetterId = user.LetterId,
+                CompleteName = user.CompleteName,
+                Registration = user.Registration
+            });
+
+        }
+
+        [HttpGet("get-all-users")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _userManager.Users.Select(u => new
+            {
+                UserId = u.Id,
+                User = u.Email,
+                LetterId = u.LetterId,
+                CompleteName = u.CompleteName,
+                Registration = u.Registration
+            }).ToListAsync();
+            return Ok(users);
+
+        }
+    }
 }

@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Schedule.Models; // Avisa onde estão as nossas classes
+using Schedule.Models; 
 
 namespace Schedule.Data
 {
-    // Agora o banco sabe que vai usar a nossa classe ApplicationUser customizada
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
@@ -18,5 +17,24 @@ namespace Schedule.Data
 
         public DbSet<SwapRequest> SwapRequests { get; set; }
         public DbSet<ScheduleDay> ScheduleDays { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+          
+            modelBuilder.Entity<SwapRequest>()
+                .HasOne(s => s.RequestingUser)
+                .WithMany()
+                .HasForeignKey(s => s.RequestingUserId)
+                .OnDelete(DeleteBehavior.Restrict); 
+
+           
+            modelBuilder.Entity<SwapRequest>()
+                .HasOne(s => s.TargetUser)
+                .WithMany()
+                .HasForeignKey(s => s.TargetUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

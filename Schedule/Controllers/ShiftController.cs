@@ -30,7 +30,7 @@ namespace Schedule.Controllers
          {
              var shifts = await _context.Shifts.ToListAsync();
              return Ok(shifts);
-        }
+         }
 
         [HttpPut("{id}")]
 

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using Schedule.Data;
 using Schedule.Models;
 using Schedule.Services;
@@ -15,7 +17,36 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<SwapRequestService>();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(); // Isso habilita a geração do Swagger
+
+builder.Services.AddSwaggerGen(c =>
+{
+    // 1. Criando a "Fechadura" (Definindo o esquema de segurança)
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Insira o token JWT desta maneira: Bearer {seu_token}"
+    });
+
+    // 2. Avisando ao Swagger para colocar o cadeado em todas as rotas
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 // Configura o Entity Framework com SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
