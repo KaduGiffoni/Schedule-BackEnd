@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schedule.DTOs;
+using Schedule.Models;
 using Schedule.Services;
+using System.Security.Claims;
 
 namespace Schedule.Controllers
 {
@@ -18,11 +20,25 @@ namespace Schedule.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRequest([FromQuery] string meuId, [FromBody] CreateSwapRequestDTO dto)
+        public async Task<IActionResult> CreateSwapRequest([FromBody] CreateSwapRequestDTO requestDTO)
         {
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            await _swapService.CreateSwapRequestAsync(meuId, dto);
-            return Ok(new { Mensagem = "Solicitação enviada com sucesso para aprovação!" });
+            if (string.IsNullOrEmpty(loggedInUserId))
+            {
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
+            }
+
+            var request = new SwapRequest
+            {
+                RequestingUserId = loggedInUserId,
+                TargetUserId = requestDTO.TargetUserId,
+                ScheduleDayId = requestDTO.ScheduleDayId
+            };
+
+            await _swapService.CreateSwapRequestAsync(loggedInUserId, requestDTO);
+
+            return Ok("Solicitação de troca enviada com sucesso!");
         }
 
         [HttpGet("pending/{userId}")]

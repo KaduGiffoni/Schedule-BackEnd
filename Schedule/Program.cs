@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
-using Microsoft.OpenApi.Models;
 using Schedule.Data;
 using Schedule.Models;
 using Schedule.Services;
@@ -20,30 +19,21 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
-    // 1. Criando a "Fechadura" (Definindo o esquema de segurança)
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    // 1. Criando a "Fechadura"
+    c.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Insira o token JWT desta maneira: Bearer {seu_token}"
+        Description = "Insira APENAS o seu token JWT abaixo."
     });
 
-    // 2. Avisando ao Swagger para colocar o cadeado em todas as rotas
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    // 2. Avisando ao Swagger para colocar o cadeado (NOVO PADRÃO .NET 10)
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
+            new OpenApiSecuritySchemeReference("bearer", document),
+            new List<string>() // <-- A CORREÇÃO ESTÁ AQUI! Trocamos o Switch físico pelo Virtual.
         }
     });
 });
