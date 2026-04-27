@@ -59,5 +59,34 @@ namespace Schedule.Services
                 .Where(r => r.TargetUserId == targetUserId && r.Status == RequestStatus.Pending)
                 .ToListAsync();
         }
+
+        public async Task RespondToRequestAsync(int requestId, string userId, bool accept)
+        {
+            var request = await _context.SwapRequests
+                                        .Include(r => r.ScheduleDay)
+                                        .FirstOrDefaultAsync(r => r.Id == requestId);
+
+            if (request == null)
+            {
+                throw new Exception("Solicitação não encontrada.");
+            }
+
+            if (request.TargetUserId != userId)
+            {
+                throw new UnauthorizedAccessException("Você não tem permissão para responder a esta solicitação. Ela não foi enviada para você.");
+            }
+
+            if (accept)
+            {
+                request.Status = RequestStatus.Approved;
+                // ... (sua lógica futura de trocar a letra da escala vai aqui)
+            }
+            else
+            {
+                request.Status = RequestStatus.Rejected;
+            }
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

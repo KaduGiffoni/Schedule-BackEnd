@@ -58,14 +58,23 @@ namespace Schedule.Controllers
 
 
         [HttpPut("{id}/respond")]
-        public async Task<IActionResult> RespondToRequest(int id, [FromQuery] bool accept)
+        public async Task<IActionResult> RespondToSwapRequest(int id, [FromQuery] bool accept)
         {
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(loggedInUserId))
+            { 
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
+            }
             try
             {
-                await _swapService.RespondToSwapRequestAsync(id, accept);
+                await _swapService.RespondToRequestAsync(id, loggedInUserId, accept);
 
-                var status = accept ? "aceita" : "recusada";
-                return Ok(new { Mensagem = $"A troca de turno foi {status} com sucesso!" });
+                return Ok(new { Mensagem = "Resposta à solicitação registrada com sucesso!" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { Erro = ex.Message });
             }
             catch (Exception ex)
             {
