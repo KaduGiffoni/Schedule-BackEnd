@@ -41,17 +41,19 @@ namespace Schedule.Controllers
             return Ok("Solicitação de troca enviada com sucesso!");
         }
 
-        [HttpGet("pending/{userId}")]
-        public async Task<IActionResult> GetPendingRequests(string userId)
+        [HttpGet("pending")]
+        public async Task<IActionResult> GetPendingRequests()
         {
-            var pending = await _swapService.GetPendingRequestsAsync(userId);
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (pending.Count == 0)
+            if (string.IsNullOrEmpty(loggedInUserId))
             {
-                return NotFound("Nenhuma solicitação pendente encontrada.");
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
             }
 
-            return Ok(pending);
+            var requests = await _swapService.GetPendingRequestsAsync(loggedInUserId);
+
+            return Ok(requests);
         }
 
 
