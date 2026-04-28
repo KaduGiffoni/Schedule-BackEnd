@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Schedule.DTOs;
 using Schedule.Services;
+using System.Security.Claims;
 
 
 namespace Schedule.Controllers
@@ -39,16 +41,26 @@ namespace Schedule.Controllers
         [HttpGet("letter/{letterId}")]
         public async Task<IActionResult> GetScheduleByMonth(int letterId, [FromQuery] int year, [FromQuery] int month)
         {
-            if (month < 1 || month > 12)
+            // 1. Lendo o crachá usando o padrão nativo do .NET (Igual fizemos nos SwapRequests)
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(loggedInUserId))
             {
-                return BadRequest("Mês inválido. Informe um número de 1 a 12.");
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
             }
 
-            var schedule = await _scheduleService.GetScheduleByMonthAsync(letterId, year, month);
-
-            if (schedule.Count == 0)
+            if (month < 1 || month > 12)
             {
-                return NotFound("Nenhuma escala encontrada para esta letra neste mês.");
+                return BadRequest(new { Erro = "Mês inválido. Informe um número de 1 a 12." });
+            }
+
+            
+            var schedule = await _scheduleService.GetScheduleByMonthAsync(loggedInUserId, letterId, year, month);
+
+             
+            if (schedule == null || schedule.Count == 0)
+            {
+                return NotFound(new { Erro = "Nenhuma escala encontrada para esta letra neste mês." });
             }
 
             return Ok(schedule);

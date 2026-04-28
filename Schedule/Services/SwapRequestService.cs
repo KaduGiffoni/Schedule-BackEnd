@@ -79,7 +79,6 @@ namespace Schedule.Services
             if (accept)
             {
                 request.Status = RequestStatus.Approved;
-                // ... (sua lógica futura de trocar a letra da escala vai aqui)
             }
             else
             {

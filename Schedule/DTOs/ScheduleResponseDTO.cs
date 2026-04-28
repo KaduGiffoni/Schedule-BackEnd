@@ -8,5 +8,10 @@
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
         public bool IsDayOff { get; set; }
+
+        public bool IsSwapped { get; set; }
+        public string SwappedWithUserName { get; set; }
+
+        public string SwappedWithUserId { get; set; }
     }
 }
