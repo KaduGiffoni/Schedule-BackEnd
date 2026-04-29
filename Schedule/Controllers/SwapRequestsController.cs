@@ -83,5 +83,24 @@ namespace Schedule.Controllers
                 return BadRequest(new { Erro = ex.Message });
             }
         }
+
+        [HttpGet("history")]
+        public async Task<IActionResult> GetSwapHistory([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(loggedInUserId))
+            {
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
+            }
+
+            
+            if (page < 1) page = 1;
+            if (pageSize > 50) pageSize = 50;
+
+            var result = await _swapService.GetUserSwapHistoryAsync(loggedInUserId, page, pageSize);
+
+            return Ok(result);
+        }
     }
 }

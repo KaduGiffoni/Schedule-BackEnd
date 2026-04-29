@@ -131,5 +131,32 @@ namespace Schedule.Services
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task<PagedResult<SwapRequest>> GetUserSwapHistoryAsync(string userId, int pageNumber, int pageSize)
+        {
+          
+            var query = _context.SwapRequests
+                .Include(sr => sr.ScheduleDay)
+                .Where(sr => sr.RequestingUserId == userId || sr.TargetUserId == userId)
+                .OrderByDescending(sr => sr.CreatedAt);
+
+            
+            var totalItems = await query.CountAsync();
+
+            
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            
+            return new PagedResult<SwapRequest>
+            {
+                Items = items,
+                TotalCount = totalItems,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            };
+        }
     }
 }
