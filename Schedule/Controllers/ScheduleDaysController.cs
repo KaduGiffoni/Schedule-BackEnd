@@ -41,7 +41,7 @@ namespace Schedule.Controllers
         [HttpGet("letter/{letterId}")]
         public async Task<IActionResult> GetScheduleByMonth(int letterId, [FromQuery] int year, [FromQuery] int month)
         {
-            // 1. Lendo o crachá usando o padrão nativo do .NET (Igual fizemos nos SwapRequests)
+            
             var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(loggedInUserId))

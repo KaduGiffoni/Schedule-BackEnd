@@ -29,16 +29,18 @@ namespace Schedule.Controllers
                 return Unauthorized(new { Erro = "Usuário não autenticado." });
             }
 
-            var request = new SwapRequest
+            try
             {
-                RequestingUserId = loggedInUserId,
-                TargetUserId = requestDTO.TargetUserId,
-                ScheduleDayId = requestDTO.ScheduleDayId
-            };
-
-            await _swapService.CreateSwapRequestAsync(loggedInUserId, requestDTO);
-
-            return Ok("Solicitação de troca enviada com sucesso!");
+                await _swapService.CreateSwapRequestAsync(loggedInUserId, requestDTO);
+                return Ok(new { Mensagem = "Solicitação de troca enviada com sucesso!" });
+            }catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Erro = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Erro = "Ocorreu um erro interno no servidor." });
+            }
         }
 
         [HttpGet("pending")]

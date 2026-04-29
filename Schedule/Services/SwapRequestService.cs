@@ -15,19 +15,63 @@ namespace Schedule.Services
             _context = context;
         }
 
-        public async Task CreateSwapRequestAsync(string requestorId, CreateSwapRequestDTO requestDTO)
+        public async Task CreateSwapRequestAsync(string requestingUserId, CreateSwapRequestDTO requestDTO)
         {
-            var swapRequest = new SwapRequest
+            var scheduleDay = await _context.ScheduleDays.FindAsync(requestDTO.ScheduleDayId);
+
+            if (scheduleDay == null)
             {
-                RequestingUserId = requestorId,
+                throw new Exception("Dia de escala não encontrado no sistema.");
+            }
+
+            if (scheduleDay.Date.Date < DateTime.Today)
+            {
+                throw new InvalidOperationException("Falha na solicitação: Não é possível solicitar troca para um plantão que já passou.");
+            }
+
+            var existingRequest = await _context.SwapRequests
+                .FirstOrDefaultAsync(sr => sr.RequestingUserId == requestingUserId
+                                        && sr.ScheduleDayId == requestDTO.ScheduleDayId
+                                        && sr.Status == RequestStatus.Pending);
+            if (existingRequest != null)
+            {
+    
+                throw new InvalidOperationException("Falha na solicitação: Você já enviou um pedido de troca para este dia que ainda está aguardando resposta.");
+            }
+
+            
+            var request = new SwapRequest
+            {
+                RequestingUserId = requestingUserId,
                 TargetUserId = requestDTO.TargetUserId,
                 ScheduleDayId = requestDTO.ScheduleDayId,
-                Status = RequestStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                Status = RequestStatus.Pending
             };
-             
-            _context.SwapRequests.Add(swapRequest);
+
+            _context.SwapRequests.Add(request);
             await _context.SaveChangesAsync();
+            
+            var targetUser = await _context.Users.FindAsync(requestDTO.TargetUserId);
+            if (targetUser == null)
+            {
+                throw new Exception("Usuário destino não encontrado.");
+            }
+
+            var isTargetUserAlreadyWorking = await _context.ScheduleDays
+                .Include(sd => sd.Shift)
+                .AnyAsync(sd =>
+                    sd.LetterId == targetUser.LetterId &&
+                    sd.Date.Date == scheduleDay.Date.Date &&
+                    sd.Shift.IsDayOff == false
+                );
+            if (isTargetUserAlreadyWorking)
+            {
+                throw new InvalidOperationException("Falha na solicitação: O colega selecionado não pode assumir este turno pois já está escalado para trabalhar neste mesmo dia.");
+            }
+
+            var request = new SwapRequest
+
+
         }
 
         public async Task RespondToSwapRequestAsync(int requestId, bool accept)
