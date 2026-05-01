@@ -13,28 +13,42 @@ namespace Schedule.Services
          {
              _context = context;
          }
-         public async Task GenerateRotationAsync(RotationRequestDTO requestDTO)
+        public async Task GenerateRotationAsync(RotationRequestDTO requestDTO)
         {
-            var  totalDays = (requestDTO.EndDate - requestDTO.StartDate).Days + 1;
+       
+            if (requestDTO.ShiftRotationIds == null || requestDTO.ShiftRotationIds.Count == 0)
+            {
+                throw new ArgumentException("A lista de turnos (ShiftRotationIds) é obrigatória e não pode estar vazia.");
+            }
 
+          
+            if (requestDTO.EndDate < requestDTO.StartDate)
+            {
+                throw new ArgumentException("A data final da escala não pode ser anterior à data inicial.");
+            }
+
+            var totalDays = (requestDTO.EndDate - requestDTO.StartDate).Days + 1;
             var scheduleDaysToInsert = new List<ScheduleDay>();
 
-            for (int i = 0; i < totalDays; i ++)
+            for (int i = 0; i < totalDays; i++)
             {
                 var currentDate = requestDTO.StartDate.AddDays(i);
+
+               
                 var rotationIndex = i % requestDTO.ShiftRotationIds.Count;
                 var currentShiftId = requestDTO.ShiftRotationIds[rotationIndex];
 
-                var scedule = new ScheduleDay
+                var schedule = new ScheduleDay
                 {
                     Date = currentDate,
                     LetterId = requestDTO.LetterId,
                     ShiftId = currentShiftId
-                }; 
+                };
 
-                scheduleDaysToInsert.Add(scedule);
+                scheduleDaysToInsert.Add(schedule);
             }
 
+            // Só salva se o pacote inteiro da escala foi processado com sucesso
             _context.ScheduleDays.AddRange(scheduleDaysToInsert);
             await _context.SaveChangesAsync();
         }

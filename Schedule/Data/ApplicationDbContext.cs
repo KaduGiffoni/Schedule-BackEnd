@@ -35,6 +35,18 @@ namespace Schedule.Data
                 .WithMany()
                 .HasForeignKey(s => s.TargetUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            
+            modelBuilder.Entity<ScheduleDay>()
+                .HasIndex(sd => new { sd.LetterId, sd.Date });
+
+           
+            modelBuilder.Entity<SwapRequest>()
+                .HasIndex(sr => new { sr.TargetUserId, sr.Status });
+
+            modelBuilder.Entity<SwapRequest>()
+                .HasIndex(sr => sr.RequestingUserId);
         }
+
     }
 }

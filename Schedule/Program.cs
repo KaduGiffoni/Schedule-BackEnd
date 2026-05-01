@@ -4,6 +4,7 @@ using Microsoft.OpenApi;
 using Schedule.Data;
 using Schedule.Models;
 using Schedule.Services;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,3 +65,29 @@ app.MapIdentityApi<ApplicationUser>(); // Isso cria as rotas de Registro e Login
 app.MapControllers();
 
 app.Run();
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console() // Continua a mostrar no terminal
+    .WriteTo.File("Logs/escala_log_.txt", rollingInterval: RollingInterval.Day) // Cria um ficheiro novo por dia!
+    .CreateLogger();
+
+try
+{
+    Log.Information("A iniciar a API de Escalas...");
+
+
+    builder.Host.UseSerilog();
+
+
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "A API falhou de forma catastrófica durante o arranque.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

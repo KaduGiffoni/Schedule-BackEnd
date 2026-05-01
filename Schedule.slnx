@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="Schedule.Tests/Schedule.Tests.csproj" Id="46815023-4b03-4512-a7a2-6c33cee66cb9" />
   <Project Path="Schedule/Schedule.csproj" />
 </Solution>
