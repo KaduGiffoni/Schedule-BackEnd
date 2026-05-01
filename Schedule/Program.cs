@@ -8,19 +8,37 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Adiciona os serviços para Controladores e Swagger
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    // Ensina o tradutor a ignorar o loop infinito das chaves estrangeiras
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
+// ======================
+// LOGGING (Serilog)
+// ======================
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/escala_log_.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// ======================
+// SERVICES
+// ======================
+
+// Controllers + JSON
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+
+// Application Services
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<SwapRequestService>();
-builder.Services.AddEndpointsApiExplorer();
 
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    // 1. Criando a "Fechadura"
     c.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,
@@ -29,58 +47,66 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Insira APENAS o seu token JWT abaixo."
     });
 
-    // 2. Avisando ao Swagger para colocar o cadeado (NOVO PADRÃO .NET 10)
     c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecuritySchemeReference("bearer", document),
-            new List<string>() // <-- A CORREÇÃO ESTÁ AQUI! Trocamos o Switch físico pelo Virtual.
+            new List<string>()
         }
     });
 });
 
-// Configura o Entity Framework com SQL Server
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configura o Identity para gerenciar usuários e login
+// Identity
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirFrontEnd", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// ======================
+// APP
+// ======================
 var app = builder.Build();
 
-// 2. Configura o Pipeline de requisições (Middleware)
+// ======================
+// MIDDLEWARE
+// ======================
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();   // Gera o arquivo JSON
-    app.UseSwaggerUI(); // Cria a interface visual bonitinha
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
+app.UseCors("PermitirFrontEnd");
+
 app.UseAuthorization();
 
-app.MapIdentityApi<ApplicationUser>(); // Isso cria as rotas de Registro e Login automaticamente!
-
+// ======================
+// ENDPOINTS
+// ======================
+app.MapIdentityApi<ApplicationUser>();
 app.MapControllers();
 
-app.Run();
-
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .WriteTo.Console() // Continua a mostrar no terminal
-    .WriteTo.File("Logs/escala_log_.txt", rollingInterval: RollingInterval.Day) // Cria um ficheiro novo por dia!
-    .CreateLogger();
-
+// ======================
+// RUN
+// ======================
 try
 {
     Log.Information("A iniciar a API de Escalas...");
-
-
-    builder.Host.UseSerilog();
-
-
-
     app.Run();
 }
 catch (Exception ex)
