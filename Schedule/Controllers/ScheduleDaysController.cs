@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Schedule.DTOs;
 using Schedule.Services;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace Schedule.Controllers
@@ -22,6 +23,7 @@ namespace Schedule.Controllers
             _scheduleService = scheduleService;
         }
 
+        [Authorize(Roles = "Admin, Manager")]
         [HttpPost("generate-rotation")]
         public async Task<IActionResult> GenerateRotation([FromBody] RotationRequestDTO requestDTO)
         {

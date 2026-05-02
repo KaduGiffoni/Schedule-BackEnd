@@ -10,7 +10,7 @@ namespace Schedule.Data
             
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            string[] roleNames = { "Admin", "Coordinator", "Standard","Viewer" };
+            string[] roleNames = { "Admin", "Manager", "Standard","Viewer" };
 
             foreach (var roleName in roleNames)
             {

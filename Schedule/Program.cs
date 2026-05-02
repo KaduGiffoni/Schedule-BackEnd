@@ -61,8 +61,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity
-builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+// 2.3. Identity (Autenticação e Níveis de Usuário)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>() // O Motor Completo!
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders()
+    .AddApiEndpoints(); // Mantém as rotas automáticas do Swagger funcionando
 
 // CORS
 builder.Services.AddCors(options =>
