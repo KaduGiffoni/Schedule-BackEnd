@@ -22,7 +22,6 @@ builder.Host.UseSerilog();
 // ======================
 // SERVICES
 // ======================
-
 // Controllers + JSON
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -60,12 +59,12 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity
-// 2.3. Identity (Autenticação e Níveis de Usuário)
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>() // O Motor Completo!
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders()
-    .AddApiEndpoints(); // Mantém as rotas automáticas do Swagger funcionando
+// ==========================================
+// CORREÇÃO 1: O Motor Automático com Roles
+// ==========================================
+builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -79,13 +78,10 @@ builder.Services.AddCors(options =>
 });
 
 // ======================
-// APP
+// APP & MIDDLEWARE
 // ======================
 var app = builder.Build();
 
-// ======================
-// MIDDLEWARE
-// ======================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -93,10 +89,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseCors("PermitirFrontEnd");
 
-app.UseAuthorization();
+// ==========================================
+// CORREÇÃO 2: A ordem exata da Segurança
+// ==========================================
+app.UseAuthentication(); // 1º Lê o Token (Quem é você?)
+app.UseAuthorization();  // 2º Verifica as Roles (O que você pode fazer?)
 
 // ======================
 // ENDPOINTS
