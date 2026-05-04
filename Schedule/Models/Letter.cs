@@ -1,14 +1,12 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Schedule.Models
+﻿namespace Schedule.Models
 {
     public class Letter
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty; // Ex: "A", "B", "C", "D"
+
         public int SectorId { get; set; }
         public Sector? Sector { get; set; }
-
-        public ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
+        public int PatternOffset { get; set; } = 0;
     }
 }

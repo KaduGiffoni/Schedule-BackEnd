@@ -15,40 +15,48 @@ namespace Schedule.Services
          }
         public async Task GenerateRotationAsync(RotationRequestDTO requestDTO)
         {
-       
-            if (requestDTO.ShiftRotationIds == null || requestDTO.ShiftRotationIds.Count == 0)
-            {
-                throw new ArgumentException("A lista de turnos (ShiftRotationIds) é obrigatória e não pode estar vazia.");
-            }
-
-          
             if (requestDTO.EndDate < requestDTO.StartDate)
-            {
                 throw new ArgumentException("A data final da escala não pode ser anterior à data inicial.");
-            }
+
+            // 1. Pega a fórmula matemática do banco
+            var pattern = await _context.ShiftPatterns.FindAsync(requestDTO.ShiftPatternId);
+            if (pattern == null)
+                throw new ArgumentException("Padrão não encontrado.");
+
+            var shiftRotationIds = pattern.Sequence.Split(',').Select(int.Parse).ToList();
+
+            // 2. Busca TODAS as letras que pertencem a esse Setor
+            var letters = await _context.Letters
+                .Where(l => l.SectorId == requestDTO.SectorId)
+                .ToListAsync();
+
+            if (!letters.Any())
+                throw new ArgumentException("Nenhuma letra encontrada para este setor.");
 
             var totalDays = (requestDTO.EndDate - requestDTO.StartDate).Days + 1;
             var scheduleDaysToInsert = new List<ScheduleDay>();
 
-            for (int i = 0; i < totalDays; i++)
+            // 3. O Loop Duplo: Para cada letra, calcula os dias dela
+            foreach (var letter in letters)
             {
-                var currentDate = requestDTO.StartDate.AddDays(i);
-
-               
-                var rotationIndex = i % requestDTO.ShiftRotationIds.Count;
-                var currentShiftId = requestDTO.ShiftRotationIds[rotationIndex];
-
-                var schedule = new ScheduleDay
+                for (int i = 0; i < totalDays; i++)
                 {
-                    Date = currentDate,
-                    LetterId = requestDTO.LetterId,
-                    ShiftId = currentShiftId
-                };
+                    var currentDate = requestDTO.StartDate.AddDays(i);
 
-                scheduleDaysToInsert.Add(schedule);
+                    // Pega a defasagem (Offset) específica desta letra
+                    var rotationIndex = (i + letter.PatternOffset) % shiftRotationIds.Count;
+                    var currentShiftId = shiftRotationIds[rotationIndex];
+
+                    scheduleDaysToInsert.Add(new ScheduleDay
+                    {
+                        Date = currentDate,
+                        LetterId = letter.Id, // A letra atual do loop
+                        ShiftId = currentShiftId
+                    });
+                }
             }
 
-            // Só salva se o pacote inteiro da escala foi processado com sucesso
+            // 4. Salva a escala inteira do setor (todas as letras) de uma vez só!
             _context.ScheduleDays.AddRange(scheduleDaysToInsert);
             await _context.SaveChangesAsync();
         }
@@ -106,6 +114,57 @@ namespace Schedule.Services
 
             return response;
 
+        }
+
+        public async Task<List<ScheduleResponseDTO>> GetEscalaGeralAsync(int ano, int mes, int? letterId, bool apenasFolga)
+        {
+            // 1. Prepara a busca trazendo os dados do Turno (Shift) junto
+            var query = _context.ScheduleDays
+                .Include(s => s.Shift)
+                .AsQueryable();
+
+            // 2. Filtro Obrigatório: Ano e Mês
+            query = query.Where(s => s.Date.Year == ano && s.Date.Month == mes);
+
+            // 3. Filtro Opcional: Se o Front-end mandou um LetterId, filtra só aquela letra
+            if (letterId.HasValue)
+            {
+                query = query.Where(s => s.LetterId == letterId.Value);
+            }
+
+            // 4. Filtro Opcional: Apenas dias de folga
+            if (apenasFolga)
+            {
+                query = query.Where(s => s.Shift.IsDayOff == true);
+            }
+
+            // 5. Executa no banco e transforma direto no seu DTO
+            var escalaLimpa = await query
+                .OrderBy(s => s.Date)
+                .ThenBy(s => s.LetterId)
+                .Select(day => new ScheduleResponseDTO
+                {
+                    Id = day.Id,
+                    Date = day.Date,
+                    LetterId = day.LetterId, // Manda a letra pro Front-end!
+                    ShiftName = day.Shift.Name,
+                    StartTime = day.Shift.StartTime,
+                    EndTime = day.Shift.EndTime,
+                    IsDayOff = day.Shift.IsDayOff,
+
+                    // Como é uma visão geral, assumimos que não estamos olhando para trocas específicas de um usuário
+                    IsSwapped = false,
+                    SwappedWithUserId = null,
+                    SwappedWithUserName = null
+                })
+                .ToListAsync();
+
+            return escalaLimpa;
+        }
+
+        public async Task CleanCompleteScheduleAsync()
+        {
+            await _context.ScheduleDays.ExecuteDeleteAsync();
         }
 
 

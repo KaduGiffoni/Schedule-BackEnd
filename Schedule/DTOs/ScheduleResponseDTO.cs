@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
+        public int LetterId { get; set; }
         public string ShiftName { get; set; } = string.Empty;
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }

@@ -2,10 +2,11 @@
 {
     public class RotationRequestDTO
     {
-        public int LetterId { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        public List<int> ShiftRotationIds { get; set; } = new List<int>();
+        // Agora o gatilho é o Setor Inteiro!
+        public int SectorId { get; set; }
+        public int ShiftPatternId { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Schedule.Data;
 
@@ -11,9 +12,11 @@ using Schedule.Data;
 namespace Schedule.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260504155214_AdicionandoPadroesDeTurnoESetores")]
+    partial class AdicionandoPadroesDeTurnoESetores
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -265,9 +268,6 @@ namespace Schedule.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("PatternOffset")
-                        .HasColumnType("int");
-
                     b.Property<int>("SectorId")
                         .HasColumnType("int");
 
@@ -468,7 +468,7 @@ namespace Schedule.Migrations
             modelBuilder.Entity("Schedule.Models.ApplicationUser", b =>
                 {
                     b.HasOne("Schedule.Models.Letter", "Letter")
-                        .WithMany()
+                        .WithMany("Users")
                         .HasForeignKey("LetterId");
 
                     b.Navigation("Letter");
@@ -551,6 +551,11 @@ namespace Schedule.Migrations
             modelBuilder.Entity("Schedule.Models.Company", b =>
                 {
                     b.Navigation("Sectors");
+                });
+
+            modelBuilder.Entity("Schedule.Models.Letter", b =>
+                {
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("Schedule.Models.Sector", b =>

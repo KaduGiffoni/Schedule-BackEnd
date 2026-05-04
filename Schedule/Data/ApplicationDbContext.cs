@@ -19,6 +19,8 @@ namespace Schedule.Data
         public DbSet<SwapRequest> SwapRequests { get; set; }
         public DbSet<ScheduleDay> ScheduleDays { get; set; }
 
+        public DbSet<ShiftPattern> ShiftPatterns { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

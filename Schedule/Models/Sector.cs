@@ -10,6 +10,9 @@ namespace Schedule.Models
         public int CompanyId { get; set; }
         public Company? Company { get; set; }
 
+        public int? DefaultShiftPatternId { get; set; }
+        public ShiftPattern? DefaultShiftPattern { get; set; }
+
         public ICollection<Letter> Letters { get; set; } = new List<Letter>();
     }
 }

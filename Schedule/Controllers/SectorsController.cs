@@ -26,10 +26,13 @@ namespace Schedule.Controllers
         }
 
         [HttpGet]
-
         public async Task<IActionResult> GetSectors()
         {
-            var sectors = await _context.Sectors.Include(c => c.Letters).ToListAsync();
+            var sectors = await _context.Sectors
+                .Include(c => c.Letters)
+                .Include(c => c.DefaultShiftPattern)
+                .ToListAsync();
+
             return Ok(sectors);
         }
 

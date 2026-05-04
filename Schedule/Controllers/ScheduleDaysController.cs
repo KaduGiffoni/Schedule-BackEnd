@@ -1,12 +1,13 @@
 ﻿using Azure.Core;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.EntityFrameworkCore;
 using Schedule.DTOs;
 using Schedule.Services;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 
 
 namespace Schedule.Controllers
@@ -31,10 +32,12 @@ namespace Schedule.Controllers
             {
                 return BadRequest("A data de início não pode ser maior que a data de fim.");
             }
-            if (requestDTO.ShiftRotationIds == null || requestDTO.ShiftRotationIds.Count == 0)
+
+            if (requestDTO.ShiftPatternId <= 0)
             {
-                return BadRequest("Você precisa informar a sequência de turnos da rotação.");
+                return BadRequest("Você precisa informar o Padrão de Turno (ShiftPatternId).");
             }
+
             await _scheduleService.GenerateRotationAsync(requestDTO);
 
             return Ok(new { Mensagem = "Escala gerada com sucesso!" });
@@ -66,6 +69,32 @@ namespace Schedule.Controllers
             }
 
             return Ok(schedule);
+        }
+
+
+        [Authorize]
+        [HttpGet("escala-geral")]
+        public async Task<IActionResult> GetEscalaGeral(
+            [FromQuery] int ano,
+            [FromQuery] int mes,
+            [FromQuery] int? letterId = null,
+            [FromQuery] bool apenasFolga = false)
+        {
+            if (ano <= 2000 || mes < 1 || mes > 12)
+                return BadRequest("Ano ou mês inválidos.");
+
+            
+            var escala = await _scheduleService.GetEscalaGeralAsync(ano, mes, letterId, apenasFolga);
+
+            return Ok(escala);
+        }
+
+        [Authorize(Roles = "Admin, Manager")]
+        [HttpDelete("reset-escala")]
+        public async Task<IActionResult> ResetarEscala()
+        {
+            await _scheduleService.CleanCompleteScheduleAsync();
+            return Ok(new { Mensagem = "Escala zerada com sucesso! O banco está limpo." });
         }
 
     }
