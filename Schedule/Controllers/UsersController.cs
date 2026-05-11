@@ -142,5 +142,27 @@ namespace Schedule.Controllers
            
             return BadRequest(result.Errors);
         }
+
+        [HttpDelete("delete-user")]
+        [Authorize(Roles = "Admin")]
+        
+        public async Task<IActionResult> DeleteUser([FromQuery] string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                return NotFound(new { Message = "Usuário não encontrado." });
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { Message = $"O usuário {email} foi deletado com sucesso." });
+            }
+
+            return BadRequest(result.Errors);
+        }
     }
 }

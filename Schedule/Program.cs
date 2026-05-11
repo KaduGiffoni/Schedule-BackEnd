@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models; // <-- ESTA É A LINHA QUE FALTAVA!
 using Schedule.Data;
 using Schedule.Models;
 using Schedule.Services;
@@ -34,7 +34,7 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<SwapRequestService>();
 
-// Swagger
+// Swagger (Corrigido para .NET 8 / Swashbuckle 6.6.2)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -46,11 +46,18 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Insira APENAS o seu token JWT abaixo."
     });
 
-    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecuritySchemeReference("bearer", document),
-            new List<string>()
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "bearer"
+                }
+            },
+            Array.Empty<string>()
         }
     });
 });
