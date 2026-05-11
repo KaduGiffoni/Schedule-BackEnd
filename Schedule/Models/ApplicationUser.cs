@@ -10,5 +10,7 @@ namespace Schedule.Models
 
         public int? LetterId { get; set; }
         public Letter? Letter { get; set; }
+
+        public bool RequiresPasswordChange { get; set; } = true;
     }
 }

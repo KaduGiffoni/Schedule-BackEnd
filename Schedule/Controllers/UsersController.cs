@@ -69,6 +69,7 @@ namespace Schedule.Controllers
             return BadRequest(result.Errors);
         }
 
+        [Authorize]
         [HttpGet("get-user")]
 
         public async Task<IActionResult> GetUserByEmail(string email)
@@ -105,6 +106,41 @@ namespace Schedule.Controllers
             }).ToListAsync();
             return Ok(users);
 
+        }
+
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO request)
+        {
+            
+            var emailLogado = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name;
+            bool isAdmin = User.IsInRole("Admin");
+
+            
+            if (emailLogado != request.Email && !isAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    Message = "Acesso negado. Você só pode alterar a sua própria senha."
+                });
+            }
+
+            
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return NotFound(new { Message = "Usuário não encontrado." });
+            }
+
+            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { Message = "Senha alterada com sucesso!" });
+            }
+
+           
+            return BadRequest(result.Errors);
         }
     }
 }
