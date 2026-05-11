@@ -43,6 +43,7 @@ namespace Schedule.Controllers
             return Ok(new { Mensagem = "Escala gerada com sucesso!" });
         }
 
+        [Authorize]
         [HttpGet("letter/{letterId}")]
         public async Task<IActionResult> GetScheduleByMonth(int letterId, [FromQuery] int year, [FromQuery] int month)
         {
