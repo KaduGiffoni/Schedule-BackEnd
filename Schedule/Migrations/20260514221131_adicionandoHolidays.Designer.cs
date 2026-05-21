@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Schedule.Data;
 
@@ -11,9 +12,11 @@ using Schedule.Data;
 namespace Schedule.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514221131_adicionandoHolidays")]
+    partial class adicionandoHolidays
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -274,9 +277,6 @@ namespace Schedule.Migrations
                     b.Property<bool>("IsHoliday")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsRecurring")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -313,138 +313,6 @@ namespace Schedule.Migrations
                     b.HasIndex("SectorId");
 
                     b.ToTable("Letters");
-                });
-
-            modelBuilder.Entity("Schedule.Models.Notice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.ToTable("Notices");
-                });
-
-            modelBuilder.Entity("Schedule.Models.NoticeAcknowledgment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AcknowledgedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("NoticeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NoticeId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("NoticeByIdAcknowledgments");
-                });
-
-            modelBuilder.Entity("Schedule.Models.NoticeComment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("NoticeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NoticeId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("NoticeComments");
-                });
-
-            modelBuilder.Entity("Schedule.Models.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ReferenceNoticeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TargetUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TargetUserId");
-
-                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Schedule.Models.ScheduleDay", b =>
@@ -654,66 +522,6 @@ namespace Schedule.Migrations
                     b.Navigation("Sector");
                 });
 
-            modelBuilder.Entity("Schedule.Models.Notice", b =>
-                {
-                    b.HasOne("Schedule.Models.ApplicationUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedByUser");
-                });
-
-            modelBuilder.Entity("Schedule.Models.NoticeAcknowledgment", b =>
-                {
-                    b.HasOne("Schedule.Models.Notice", "Notice")
-                        .WithMany("Acknowledgments")
-                        .HasForeignKey("NoticeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Schedule.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Notice");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Schedule.Models.NoticeComment", b =>
-                {
-                    b.HasOne("Schedule.Models.Notice", "Notice")
-                        .WithMany("Comments")
-                        .HasForeignKey("NoticeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Schedule.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Notice");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Schedule.Models.Notification", b =>
-                {
-                    b.HasOne("Schedule.Models.ApplicationUser", "TargetUser")
-                        .WithMany()
-                        .HasForeignKey("TargetUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("TargetUser");
-                });
-
             modelBuilder.Entity("Schedule.Models.ScheduleDay", b =>
                 {
                     b.HasOne("Schedule.Models.Letter", "Letter")
@@ -780,13 +588,6 @@ namespace Schedule.Migrations
             modelBuilder.Entity("Schedule.Models.Company", b =>
                 {
                     b.Navigation("Sectors");
-                });
-
-            modelBuilder.Entity("Schedule.Models.Notice", b =>
-                {
-                    b.Navigation("Acknowledgments");
-
-                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("Schedule.Models.Sector", b =>

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Quartz;
 using Schedule.Data;
+using Schedule.Jobs;
 using Schedule.Models;
 using Schedule.Services;
 using Serilog;
@@ -33,6 +35,9 @@ builder.Services.AddControllers()
 // Application Services
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<SwapRequestService>();
+builder.Services.AddHttpClient<HolidayService>();
+builder.Services.AddScoped<HolidayService>();
+builder.Services.AddScoped<NoticeService>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -65,6 +70,28 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+//job
+builder.Services.AddQuartz(q =>
+{
+    var jobKey = new JobKey("SyncHolidaysJob");
+    q.AddJob<SyncHolidaysJob>(opts => opts.WithIdentity(jobKey));
+
+    
+    q.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithIdentity("JanFirstTrigger")
+        .WithCronSchedule("0 0 0 1 1 ?"));
+
+
+    q.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithIdentity("MonthlyCheckTrigger")
+        .WithCronSchedule("0 0 3 1 * ?"));
+});
+
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // CORS
 builder.Services.AddCors(options =>
