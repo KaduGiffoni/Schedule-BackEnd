@@ -12,7 +12,7 @@ namespace Schedule.DTOs
         public DateTime EndDate { get; set; }
 
         // Ferias, CompensacaoHora, Atestado, Falta, Outro
-        public AbsenceType Type { get; set; } = AbsenceType.Ferias;
+        public AbsenceType Type { get; set; } = AbsenceType.Vacation;
 
         // Se vier vazio, assume o usuário logado (auto-lançamento)
         public string? TargetUserId { get; set; }

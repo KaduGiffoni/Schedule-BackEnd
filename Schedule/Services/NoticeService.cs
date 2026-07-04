@@ -19,6 +19,10 @@ namespace Schedule.Services
         // ==========================================
         public async Task<Notice> CreateNoticeAsync(string title, string content, string type, string userId)
         {
+            var creator = await _context.Users.FindAsync(userId);
+
+            var sectorId = await GetSectorIdForUserAsync(creator);
+
             var notice = new Notice
             {
                 Title = title,
@@ -26,11 +30,10 @@ namespace Schedule.Services
                 Type = type,
                 Status = "Ativo",
                 CreatedByUserId = userId,
+                CreatedByUser = creator,
+                SectorId = sectorId, // Isola o aviso dentro do setor de quem criou
                 CreatedAt = DateTime.Now
             };
-
-            // Para podermos usar o nome de quem criou na notificação, precisamos carregar o usuário
-            notice.CreatedByUser = await _context.Users.FindAsync(userId);
 
             _context.Notices.Add(notice);
             await _context.SaveChangesAsync();
@@ -38,7 +41,7 @@ namespace Schedule.Services
             // A MÁGICA ACONTECE AQUI:
             if (type == "Turno")
             {
-                await NotifyNextShiftAsync(notice);
+                await NotifyNextShiftAsync(notice, sectorId);
             }
 
             return notice;
@@ -77,13 +80,25 @@ namespace Schedule.Services
         // ==========================================
         public async Task<List<NoticeResponseDTO>> GetActiveNoticesForUserAsync(string userId)
         {
+            var user = await _context.Users.FindAsync(userId);
+            var userSectorId = await GetSectorIdForUserAsync(user);
+
             var notices = await _context.Notices
                 .Include(n => n.CreatedByUser)
                 .Include(n => n.Comments)
                     .ThenInclude(c => c.User) // Traz quem comentou
                 .Where(n =>
-                    (n.Type == "Geral" && !n.Acknowledgments.Any(a => a.UserId == userId)) ||
-                    (n.Type == "Turno" && n.Status == "Ativo")
+                    // Isolamento por setor: só vê avisos do próprio setor,
+                    // ou avisos sem setor definido (globais/administrativos)
+                    (n.SectorId == null || n.SectorId == userSectorId)
+                    &&
+                    (
+                        (n.Type == "Geral" && !n.Acknowledgments.Any(a => a.UserId == userId))
+                        ||
+                        // "Turno" só aparece pra quem realmente foi notificado como próximo turno
+                        (n.Type == "Turno" && n.Status == "Ativo"
+                            && _context.Notifications.Any(no => no.ReferenceNoticeId == n.Id && no.TargetUserId == userId))
+                    )
                 )
                 .OrderByDescending(n => n.CreatedAt)
                 .Select(n => new NoticeResponseDTO
@@ -108,20 +123,33 @@ namespace Schedule.Services
             return notices;
         }
 
-        private async Task NotifyNextShiftAsync(Notice notice)
+        private async Task NotifyNextShiftAsync(Notice notice, int? sectorId)
         {
+            // Sem setor definido pra quem criou o aviso, não temos como saber
+            // qual letra é "o próximo turno" — melhor não notificar do que notificar errado.
+            if (sectorId == null) return;
+
             var now = DateTime.Now;
             var today = now.Date;
             var tomorrow = today.AddDays(1);
 
-            // 1. Busca as escalas de hoje e amanhã no banco
+            // Restringe a busca às letras do MESMO SETOR de quem criou o aviso
+            var sectorLetterIds = await _context.Letters
+                .Where(l => l.SectorId == sectorId.Value)
+                .Select(l => l.Id)
+                .ToListAsync();
+
+            if (sectorLetterIds.Count == 0) return;
+
+            // 1. Busca as escalas de hoje e amanhã, só dentro do setor do autor
             var upcomingSchedules = await _context.ScheduleDays
                 .Include(s => s.Shift)
-                .Where(s => (s.Date == today || s.Date == tomorrow) && s.Shift.IsDayOff == false)
+                .Where(s => sectorLetterIds.Contains(s.LetterId)
+                         && (s.Date == today || s.Date == tomorrow)
+                         && s.Shift.IsDayOff == false)
                 .ToListAsync();
 
             // 2. Monta a linha do tempo real (Junta a Data com a Hora de Início do Turno)
-            // Assumindo que s.Shift.StartTime é um TimeSpan
             var nextShiftSchedule = upcomingSchedules
                 .Select(s => new
                 {
@@ -132,11 +160,11 @@ namespace Schedule.Services
                 .OrderBy(x => x.ActualStartTime)     // Ordena do mais próximo para o mais distante
                 .FirstOrDefault();                   // Pega exatamente o próximo!
 
-            if (nextShiftSchedule == null) return; // Se não achou ninguém (improvável no NOC), aborta.
+            if (nextShiftSchedule == null) return;
 
             var nextLetterId = nextShiftSchedule.Schedule.LetterId;
 
-            // 3. Busca os usuários que pertencem a essa letra (Assumindo que o ApplicationUser tem um LetterId)
+            // 3. Busca os usuários que pertencem a essa letra
             var targetUsers = await _context.Users
                 .Where(u => u.LetterId == nextLetterId)
                 .ToListAsync();
@@ -182,6 +210,67 @@ namespace Schedule.Services
                 CreatedAt = comment.CreatedAt,
                 CreatedByUserName = user?.UserName ?? "Usuário"
             };
+        }
+
+        // ==========================================
+        // NOTIFICAÇÕES (sino/campainha do usuário)
+        // ==========================================
+
+        public async Task<List<NotificationResponseDTO>> GetNotificationsForUserAsync(string userId, bool onlyUnread = false)
+        {
+            var query = _context.Notifications.Where(n => n.TargetUserId == userId);
+
+            if (onlyUnread)
+                query = query.Where(n => !n.IsRead);
+
+            return await query
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => new NotificationResponseDTO
+                {
+                    Id = n.Id,
+                    Message = n.Message,
+                    Type = n.Type,
+                    ReferenceNoticeId = n.ReferenceNoticeId,
+                    IsRead = n.IsRead,
+                    CreatedAt = n.CreatedAt
+                })
+                .ToListAsync();
+        }
+
+        public async Task<bool> MarkNotificationAsReadAsync(int notificationId, string userId)
+        {
+            var notification = await _context.Notifications.FindAsync(notificationId);
+            if (notification == null) return false;
+
+            if (notification.TargetUserId != userId)
+                throw new UnauthorizedAccessException("Você não tem permissão para alterar esta notificação.");
+
+            notification.IsRead = true;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task MarkAllNotificationsAsReadAsync(string userId)
+        {
+            var unread = await _context.Notifications
+                .Where(n => n.TargetUserId == userId && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var notification in unread)
+                notification.IsRead = true;
+
+            await _context.SaveChangesAsync();
+        }
+
+        // ==========================================
+        // Helper: descobre o Setor de um usuário via a Letra dele
+        // ==========================================
+        private async Task<int?> GetSectorIdForUserAsync(ApplicationUser? user)
+        {
+            if (user?.LetterId == null) return null;
+
+            var letter = await _context.Letters.FindAsync(user.LetterId.Value);
+            return letter?.SectorId;
         }
     }
 }

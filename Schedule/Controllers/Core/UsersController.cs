@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Schedule.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
@@ -92,6 +93,7 @@ namespace Schedule.Controllers
         }
 
         [HttpGet("get-all-users")]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> GetUsers()
         {
             var users = await _userManager.Users.Select(u => new

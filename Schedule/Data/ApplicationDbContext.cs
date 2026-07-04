@@ -64,6 +64,12 @@ namespace Schedule.Data
                 .HasForeignKey(n => n.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Notice>()
+                .HasOne(n => n.Sector)
+                .WithMany()
+                .HasForeignKey(n => n.SectorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<NoticeAcknowledgment>()
                 .HasOne(na => na.User)
                 .WithMany()
