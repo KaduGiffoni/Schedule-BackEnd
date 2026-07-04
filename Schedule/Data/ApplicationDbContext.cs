@@ -17,6 +17,8 @@ namespace Schedule.Data
         public DbSet<Shift> Shifts { get; set; }
         public DbSet<Holiday> Holidays { get; set; }
 
+        public DbSet<UserAbsence> UserAbsences { get; set; }
+
         public DbSet<SwapRequest> SwapRequests { get; set; }
         public DbSet<ScheduleDay> ScheduleDays { get; set; }
 
