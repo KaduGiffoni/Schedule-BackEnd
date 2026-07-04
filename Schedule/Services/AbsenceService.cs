@@ -14,17 +14,40 @@ namespace Schedule.Services
             _context = context;
         }
 
-        // Lança uma nova ausência
-        public async Task<UserAbsence> CreateAbsenceAsync(DateTime start, DateTime end, string userId)
+        // Lança uma nova ausência (férias, compensação de hora, atestado, etc.)
+        public async Task<UserAbsence> CreateAbsenceAsync(AbsenceCreateDTO request, string requesterUserId)
         {
-            if (start > end)
+            if (request.StartDate.Date > request.EndDate.Date)
                 throw new ArgumentException("A data de início não pode ser maior que a data de fim.");
+
+            // Se mandaram um ID no request, usa ele (Manager inserindo para outro).
+            // Se não, pega o ID de quem está logado (Auto-inserção).
+            var targetUserId = string.IsNullOrEmpty(request.TargetUserId)
+                ? requesterUserId
+                : request.TargetUserId;
+
+            var targetUserExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
+            if (!targetUserExists)
+                throw new ArgumentException("Usuário informado não encontrado.");
+
+            if (!string.IsNullOrEmpty(request.SubstituteUserId))
+            {
+                if (request.SubstituteUserId == targetUserId)
+                    throw new ArgumentException("O substituto não pode ser a mesma pessoa que está ausente.");
+
+                var substituteExists = await _context.Users.AnyAsync(u => u.Id == request.SubstituteUserId);
+                if (!substituteExists)
+                    throw new ArgumentException("Usuário substituto não encontrado.");
+            }
 
             var absence = new UserAbsence
             {
-                UserId = userId,
-                StartDate = start.Date, // .Date garante que zera as horas (00:00:00)
-                EndDate = end.Date,
+                UserId = targetUserId,
+                Type = request.Type,
+                StartDate = request.StartDate.Date, // .Date garante que zera as horas (00:00:00)
+                EndDate = request.EndDate.Date,
+                SubstituteUserId = request.SubstituteUserId,
+                Notes = request.Notes,
                 CreatedAt = DateTime.Now
             };
 
@@ -41,19 +64,27 @@ namespace Schedule.Services
             // Pega do início do mês atual para não sumir com férias que começaram dia 01
             var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
 
-            return await _context.UserAbsences
+            var absences = await _context.UserAbsences
                 .Include(a => a.User)
+                .Include(a => a.SubstituteUser)
                 .Where(a => a.EndDate >= firstDayOfMonth)
                 .OrderBy(a => a.StartDate)
-                .Select(a => new AbsenceResponseDTO
-                {
-                    Id = a.Id,
-                    UserId = a.UserId,
-                    UserName = a.User != null ? a.User.UserName ?? "Usuário" : "Usuário",
-                    StartDate = a.StartDate,
-                    EndDate = a.EndDate
-                })
                 .ToListAsync();
+
+            return absences.Select(a => new AbsenceResponseDTO
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                UserName = a.User != null ? a.User.UserName ?? "Usuário" : "Usuário",
+                Type = a.Type,
+                TypeDescription = a.Type.ToDisplayName(),
+                StartDate = a.StartDate,
+                EndDate = a.EndDate,
+                TotalDays = a.TotalDays,
+                SubstituteUserId = a.SubstituteUserId,
+                SubstituteUserName = a.SubstituteUser?.UserName,
+                Notes = a.Notes
+            }).ToList();
         }
 
         // Deleta (caso alguém lance errado)

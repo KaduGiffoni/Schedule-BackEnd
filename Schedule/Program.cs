@@ -38,6 +38,7 @@ builder.Services.AddScoped<SwapRequestService>();
 builder.Services.AddHttpClient<HolidayService>();
 builder.Services.AddScoped<HolidayService>();
 builder.Services.AddScoped<NoticeService>();
+builder.Services.AddScoped<AbsenceService>();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Schedule.Models; 
+using Schedule.Models;
 
 namespace Schedule.Data
 {
@@ -33,25 +33,25 @@ namespace Schedule.Data
         {
             base.OnModelCreating(modelBuilder);
 
-          
+
             modelBuilder.Entity<SwapRequest>()
                 .HasOne(s => s.RequestingUser)
                 .WithMany()
                 .HasForeignKey(s => s.RequestingUserId)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
 
-           
+
             modelBuilder.Entity<SwapRequest>()
                 .HasOne(s => s.TargetUser)
                 .WithMany()
                 .HasForeignKey(s => s.TargetUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            
+
             modelBuilder.Entity<ScheduleDay>()
                 .HasIndex(sd => new { sd.LetterId, sd.Date });
 
-           
+
             modelBuilder.Entity<SwapRequest>()
                 .HasIndex(sr => new { sr.TargetUserId, sr.Status });
 
@@ -81,6 +81,23 @@ namespace Schedule.Data
                 .WithMany()
                 .HasForeignKey(n => n.TargetUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // UserAbsence tem duas FKs para ApplicationUser (User e SubstituteUser).
+            // Restrict nas duas evita erro de múltiplos caminhos de cascade no SQL Server.
+            modelBuilder.Entity<UserAbsence>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserAbsence>()
+                .HasOne(a => a.SubstituteUser)
+                .WithMany()
+                .HasForeignKey(a => a.SubstituteUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UserAbsence>()
+                .HasIndex(a => new { a.UserId, a.StartDate, a.EndDate });
         }
 
     }

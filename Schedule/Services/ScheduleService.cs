@@ -10,9 +10,9 @@ namespace Schedule.Services
         private readonly ApplicationDbContext _context;
 
         public ScheduleService(ApplicationDbContext context)
-         {
-             _context = context;
-         }
+        {
+            _context = context;
+        }
         public async Task GenerateRotationAsync(RotationRequestDTO requestDTO)
         {
             if (requestDTO.EndDate < requestDTO.StartDate)
@@ -78,15 +78,21 @@ namespace Schedule.Services
                           && (sr.RequestingUserId == userId || sr.TargetUserId == userId))
                 .ToListAsync();
 
+            // Ausências dos usuários dessa letra que caem dentro do mês pesquisado
+            var firstDayOfMonth = new DateTime(year, month, 1);
+            var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+            var absences = await GetAbsencesForLettersAsync(new List<int> { letterId }, firstDayOfMonth, lastDayOfMonth);
+
             var response = new List<ScheduleResponseDTO>();
 
             foreach (var day in schedule)
             {
-               
+
                 var dto = new ScheduleResponseDTO
                 {
                     Id = day.Id,
                     Date = day.Date,
+                    LetterId = day.LetterId,
                     ShiftName = day.Shift.Name,
                     StartTime = day.Shift.StartTime,
                     EndTime = day.Shift.EndTime,
@@ -95,12 +101,12 @@ namespace Schedule.Services
                     SwappedWithUserId = null
                 };
 
-               
+
                 var swap = approvedSwaps.FirstOrDefault(sr => sr.ScheduleDayId == day.Id);
 
                 if (swap != null)
                 {
-                   
+
                     dto.IsSwapped = true;
 
 
@@ -108,6 +114,10 @@ namespace Schedule.Services
                         ? swap.TargetUserId
                         : swap.RequestingUserId;
                 }
+
+                // Sobrepõe a informação de ausência (férias, compensação, etc.) nesse dia
+                dto.Absences = BuildOverlayForDay(absences, day.LetterId, day.Date);
+                dto.HasAbsence = dto.Absences.Count > 0;
 
                 response.Add(dto);
             }
@@ -159,6 +169,22 @@ namespace Schedule.Services
                 })
                 .ToListAsync();
 
+            if (escalaLimpa.Count == 0)
+                return escalaLimpa;
+
+            // Busca ausências apenas das letras que realmente aparecem na escala retornada
+            var letterIds = escalaLimpa.Select(d => d.LetterId).Distinct().ToList();
+            var firstDayOfMonth = new DateTime(ano, mes, 1);
+            var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+
+            var absences = await GetAbsencesForLettersAsync(letterIds, firstDayOfMonth, lastDayOfMonth);
+
+            foreach (var dto in escalaLimpa)
+            {
+                dto.Absences = BuildOverlayForDay(absences, dto.LetterId, dto.Date);
+                dto.HasAbsence = dto.Absences.Count > 0;
+            }
+
             return escalaLimpa;
         }
 
@@ -167,6 +193,47 @@ namespace Schedule.Services
             await _context.ScheduleDays.ExecuteDeleteAsync();
         }
 
+        // ==========================================
+        // Helpers de ausência (usados pelo calendário)
+        // ==========================================
 
+        // Busca todas as ausências de usuários que pertencem às letras informadas,
+        // que tenham alguma sobreposição com o intervalo de datas pesquisado.
+        private async Task<List<UserAbsence>> GetAbsencesForLettersAsync(List<int> letterIds, DateTime rangeStart, DateTime rangeEnd)
+        {
+            if (letterIds == null || letterIds.Count == 0)
+                return new List<UserAbsence>();
+
+            return await _context.UserAbsences
+                .Include(a => a.User)
+                .Include(a => a.SubstituteUser)
+                .Where(a => a.User != null
+                         && a.User.LetterId != null
+                         && letterIds.Contains(a.User.LetterId.Value)
+                         && a.StartDate <= rangeEnd
+                         && a.EndDate >= rangeStart)
+                .ToListAsync();
+        }
+
+        // Filtra, dentre as ausências já carregadas, quais valem pra essa letra + esse dia específico
+        private static List<AbsenceOverlayDTO> BuildOverlayForDay(List<UserAbsence> absences, int letterId, DateTime date)
+        {
+            return absences
+                .Where(a => a.User != null
+                         && a.User.LetterId == letterId
+                         && date.Date >= a.StartDate.Date
+                         && date.Date <= a.EndDate.Date)
+                .Select(a => new AbsenceOverlayDTO
+                {
+                    AbsenceId = a.Id,
+                    UserId = a.UserId,
+                    UserName = a.User?.UserName ?? "Usuário",
+                    Type = a.Type,
+                    TypeDescription = a.Type.ToDisplayName(),
+                    SubstituteUserId = a.SubstituteUserId,
+                    SubstituteUserName = a.SubstituteUser?.UserName
+                })
+                .ToList();
+        }
     }
 }

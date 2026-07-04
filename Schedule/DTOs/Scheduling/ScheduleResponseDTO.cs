@@ -14,5 +14,9 @@
         public string SwappedWithUserName { get; set; }
 
         public string SwappedWithUserId { get; set; }
+
+        // Preenchido quando algum usuário dessa letra está ausente nesse dia
+        public bool HasAbsence { get; set; }
+        public List<AbsenceOverlayDTO> Absences { get; set; } = new();
     }
 }

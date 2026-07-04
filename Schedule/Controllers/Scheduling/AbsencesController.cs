@@ -28,21 +28,14 @@ namespace Schedule.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAbsence([FromBody] AbsenceCreateDTO request)
         {
-            // Se mandaram um ID no request, usa ele (Manager inserindo para outro).
-            // Se não, pega o ID de quem está logado (Auto-inserção).
-            var targetUserId = request.TargetUserId;
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(targetUserId))
-            {
-                targetUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            }
-
-            if (string.IsNullOrEmpty(targetUserId))
+            if (string.IsNullOrEmpty(loggedInUserId))
                 return Unauthorized(new { Erro = "Usuário não autenticado." });
 
             try
             {
-                var absence = await _absenceService.CreateAbsenceAsync(request.StartDate, request.EndDate, targetUserId);
+                var absence = await _absenceService.CreateAbsenceAsync(request, loggedInUserId);
                 return Ok(new { Mensagem = "Ausência registrada com sucesso!", Id = absence.Id });
             }
             catch (ArgumentException ex)
