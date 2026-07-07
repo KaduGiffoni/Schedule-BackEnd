@@ -25,21 +25,22 @@ namespace Schedule.Controllers
         {
             int currentYear = DateTime.Now.Year;
 
-            
+
             bool isHealthy = await _holidayService.CheckHolidaysHealthAsync();
 
-            
+
             var holidays = await _context.Holidays.OrderBy(h => h.Date).ToListAsync();
 
-            
+
             return Ok(new
             {
-                NeedsSync = !isHealthy, 
+                NeedsSync = !isHealthy,
                 CurrentYear = currentYear,
                 Data = holidays
             });
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("sync/{year}")]
         public async Task<IActionResult> SyncHolidays(int year)
         {

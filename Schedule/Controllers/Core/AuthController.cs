@@ -40,6 +40,7 @@ namespace Schedule.Controllers
             return BadRequest(result.Errors);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("listar-cargos")]
         public IActionResult ListarCargos()
         {
@@ -52,6 +53,6 @@ namespace Schedule.Controllers
             return Ok(roles);
         }
 
-        
+
     }
 }

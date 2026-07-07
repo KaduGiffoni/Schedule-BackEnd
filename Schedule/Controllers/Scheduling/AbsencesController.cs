@@ -33,22 +33,48 @@ namespace Schedule.Controllers
             if (string.IsNullOrEmpty(loggedInUserId))
                 return Unauthorized(new { Erro = "Usuário não autenticado." });
 
+            // Admin e Manager podem lançar/apagar ausência de qualquer pessoa.
+            // Um usuário comum só pode mexer nos próprios registros.
+            var isPrivilegedUser = User.IsInRole("Admin") || User.IsInRole("Manager");
+
             try
             {
-                var absence = await _absenceService.CreateAbsenceAsync(request, loggedInUserId);
+                var absence = await _absenceService.CreateAbsenceAsync(request, loggedInUserId, isPrivilegedUser);
                 return Ok(new { Mensagem = "Ausência registrada com sucesso!", Id = absence.Id });
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { Erro = ex.Message });
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { Erro = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAbsence(int id)
         {
-            await _absenceService.DeleteAbsenceAsync(id);
-            return Ok(new { Mensagem = "Registro removido com sucesso." });
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(loggedInUserId))
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
+
+            var isPrivilegedUser = User.IsInRole("Admin") || User.IsInRole("Manager");
+
+            try
+            {
+                await _absenceService.DeleteAbsenceAsync(id, loggedInUserId, isPrivilegedUser);
+                return Ok(new { Mensagem = "Registro removido com sucesso." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { Erro = ex.Message });
+            }
         }
     }
 }

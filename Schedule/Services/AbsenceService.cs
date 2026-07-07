@@ -15,7 +15,8 @@ namespace Schedule.Services
         }
 
         // Lança uma nova ausência (férias, compensação de hora, atestado, etc.)
-        public async Task<UserAbsence> CreateAbsenceAsync(AbsenceCreateDTO request, string requesterUserId)
+        // isPrivilegedUser = true para Admin/Manager (podem lançar para qualquer um)
+        public async Task<UserAbsence> CreateAbsenceAsync(AbsenceCreateDTO request, string requesterUserId, bool isPrivilegedUser)
         {
             if (request.StartDate.Date > request.EndDate.Date)
                 throw new ArgumentException("A data de início não pode ser maior que a data de fim.");
@@ -25,6 +26,11 @@ namespace Schedule.Services
             var targetUserId = string.IsNullOrEmpty(request.TargetUserId)
                 ? requesterUserId
                 : request.TargetUserId;
+
+            // Um usuário comum só pode lançar ausência para si mesmo.
+            // Só Admin/Manager podem lançar em nome de outra pessoa.
+            if (targetUserId != requesterUserId && !isPrivilegedUser)
+                throw new UnauthorizedAccessException("Você não tem permissão para lançar ausência de outro usuário.");
 
             var targetUserExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
             if (!targetUserExists)
@@ -88,14 +94,21 @@ namespace Schedule.Services
         }
 
         // Deleta (caso alguém lance errado)
-        public async Task DeleteAbsenceAsync(int id)
+        // isPrivilegedUser = true para Admin/Manager (podem apagar de qualquer um)
+        public async Task DeleteAbsenceAsync(int id, string requesterUserId, bool isPrivilegedUser)
         {
             var absence = await _context.UserAbsences.FindAsync(id);
-            if (absence != null)
-            {
-                _context.UserAbsences.Remove(absence);
-                await _context.SaveChangesAsync();
-            }
+
+            if (absence == null)
+                throw new KeyNotFoundException("Registro de ausência não encontrado.");
+
+            // Um usuário comum só pode apagar a própria ausência.
+            // Só Admin/Manager podem apagar a de outra pessoa.
+            if (absence.UserId != requesterUserId && !isPrivilegedUser)
+                throw new UnauthorizedAccessException("Você não tem permissão para excluir a ausência de outro usuário.");
+
+            _context.UserAbsences.Remove(absence);
+            await _context.SaveChangesAsync();
         }
     }
 }

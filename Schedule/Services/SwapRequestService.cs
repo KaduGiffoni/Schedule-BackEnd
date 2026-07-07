@@ -27,7 +27,7 @@ namespace Schedule.Services
                 throw new Exception("Dia de escala não encontrado no sistema.");
             }
 
-    
+
             if (scheduleDay.Date.Date < DateTime.Today)
             {
                 _logger.LogWarning("Tentativa de fraude bloqueada: O utilizador {UserId} tentou trocar um turno do passado (Dia: {Date}).", requestingUserId, scheduleDay.Date);
@@ -76,32 +76,11 @@ namespace Schedule.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task RespondToSwapRequestAsync(int requestId, bool accept)
-        {
-            var request = await _context.SwapRequests
-                .Include(r => r.ScheduleDay)
-                .FirstOrDefaultAsync(r => r.Id == requestId);
-
-            if (request == null || request.Status != RequestStatus.Pending)
-                throw new Exception("Solicitação inválida ou já processada.");
-
-            if (accept)
-            {
-                request.Status = RequestStatus.Approved;            
-            }
-            else
-            {
-                request.Status = RequestStatus.Rejected;
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<List<SwapRequest>> GetPendingRequestsAsync(string targetUserId)
         {
             return await _context.SwapRequests
                 .Include(r => r.ScheduleDay)
-                .ThenInclude(sd => sd.Shift) 
+                .ThenInclude(sd => sd.Shift)
                 .Where(r => r.TargetUserId == targetUserId && r.Status == RequestStatus.Pending)
                 .ToListAsync();
         }
@@ -136,22 +115,22 @@ namespace Schedule.Services
 
         public async Task<PagedResult<SwapRequest>> GetUserSwapHistoryAsync(string userId, int pageNumber, int pageSize)
         {
-          
+
             var query = _context.SwapRequests
                 .Include(sr => sr.ScheduleDay)
                 .Where(sr => sr.RequestingUserId == userId || sr.TargetUserId == userId)
                 .OrderByDescending(sr => sr.CreatedAt);
 
-            
+
             var totalItems = await query.CountAsync();
 
-            
+
             var items = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            
+
             return new PagedResult<SwapRequest>
             {
                 Items = items,

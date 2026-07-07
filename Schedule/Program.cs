@@ -77,7 +77,7 @@ builder.Services.AddQuartz(q =>
     var jobKey = new JobKey("SyncHolidaysJob");
     q.AddJob<SyncHolidaysJob>(opts => opts.WithIdentity(jobKey));
 
-    
+
     q.AddTrigger(opts => opts
         .ForJob(jobKey)
         .WithIdentity("JanFirstTrigger")
@@ -89,8 +89,6 @@ builder.Services.AddQuartz(q =>
         .WithIdentity("MonthlyCheckTrigger")
         .WithCronSchedule("0 0 3 1 * ?"));
 });
-
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
@@ -109,6 +107,17 @@ builder.Services.AddCors(options =>
 // APP & MIDDLEWARE
 // ======================
 var app = builder.Build();
+
+// ==========================================
+// CORREÇÃO 3: Garante que os cargos (Admin, Manager, Standard, Viewer)
+// existem no banco assim que a API sobe. Sem isso, ninguém consegue
+// ser promovido a Admin/Manager pelo endpoint user-promoter.
+// ==========================================
+using (var scope = app.Services.CreateScope())
+{
+    await DbSeeder.SeedRolesAsync(scope.ServiceProvider);
+    await DbSeeder.SeedFirstAdminAsync(scope.ServiceProvider, app.Configuration);
+}
 
 if (app.Environment.IsDevelopment())
 {
