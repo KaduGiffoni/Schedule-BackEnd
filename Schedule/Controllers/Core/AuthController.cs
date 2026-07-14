@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Schedule.Models;
 using System.Data;
+using System.Security.Claims;
 
 namespace Schedule.Controllers
 {
@@ -17,6 +18,33 @@ namespace Schedule.Controllers
         {
             _userManager = userManager;
             _roleManager = roleManager;
+        }
+
+        // O token emitido por MapIdentityApi é opaco (não é um JWT decodificável no
+        // navegador) — então o front não consegue ler as roles "de dentro" do token.
+        // Esse endpoint resolve isso: o front chama /api/Auth/me logo após o login (e
+        // ao carregar a aplicação) pra saber quem está logado e quais são suas roles.
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> Me()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound();
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new
+            {
+                userId = user.Id,
+                email = user.Email,
+                completeName = user.CompleteName,
+                roles
+            });
         }
 
         [Authorize(Roles = "Admin")]

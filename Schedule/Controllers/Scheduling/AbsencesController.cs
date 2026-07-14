@@ -52,6 +52,35 @@ namespace Schedule.Controllers
             }
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateAbsence(int id, [FromBody] AbsenceCreateDTO request)
+        {
+            var loggedInUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(loggedInUserId))
+                return Unauthorized(new { Erro = "Usuário não autenticado." });
+
+            var isPrivilegedUser = User.IsInRole("Admin") || User.IsInRole("Manager");
+
+            try
+            {
+                await _absenceService.UpdateAbsenceAsync(id, request, loggedInUserId, isPrivilegedUser);
+                return Ok(new { Mensagem = "Ausência atualizada com sucesso!" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Erro = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Erro = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { Erro = ex.Message });
+            }
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAbsence(int id)
         {

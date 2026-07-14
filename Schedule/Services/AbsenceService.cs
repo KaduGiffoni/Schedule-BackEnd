@@ -93,6 +93,53 @@ namespace Schedule.Services
             }).ToList();
         }
 
+        // Edita uma ausência existente (mesma regra de dono: o próprio usuário, ou
+        // Admin/Manager podem editar a de qualquer um).
+        public async Task<UserAbsence> UpdateAbsenceAsync(int id, AbsenceCreateDTO request, string requesterUserId, bool isPrivilegedUser)
+        {
+            var absence = await _context.UserAbsences.FindAsync(id);
+            if (absence == null)
+                throw new KeyNotFoundException("Registro de ausência não encontrado.");
+
+            if (absence.UserId != requesterUserId && !isPrivilegedUser)
+                throw new UnauthorizedAccessException("Você não tem permissão para editar a ausência de outro usuário.");
+
+            if (request.StartDate.Date > request.EndDate.Date)
+                throw new ArgumentException("A data de início não pode ser maior que a data de fim.");
+
+            // Só Admin/Manager podem reatribuir a ausência para outra pessoa.
+            if (!string.IsNullOrEmpty(request.TargetUserId) && request.TargetUserId != absence.UserId)
+            {
+                if (!isPrivilegedUser)
+                    throw new UnauthorizedAccessException("Você não tem permissão para reatribuir esta ausência para outro usuário.");
+
+                var targetUserExists = await _context.Users.AnyAsync(u => u.Id == request.TargetUserId);
+                if (!targetUserExists)
+                    throw new ArgumentException("Usuário informado não encontrado.");
+
+                absence.UserId = request.TargetUserId;
+            }
+
+            if (!string.IsNullOrEmpty(request.SubstituteUserId))
+            {
+                if (request.SubstituteUserId == absence.UserId)
+                    throw new ArgumentException("O substituto não pode ser a mesma pessoa que está ausente.");
+
+                var substituteExists = await _context.Users.AnyAsync(u => u.Id == request.SubstituteUserId);
+                if (!substituteExists)
+                    throw new ArgumentException("Usuário substituto não encontrado.");
+            }
+
+            absence.Type = request.Type;
+            absence.StartDate = request.StartDate.Date;
+            absence.EndDate = request.EndDate.Date;
+            absence.SubstituteUserId = request.SubstituteUserId;
+            absence.Notes = request.Notes;
+
+            await _context.SaveChangesAsync();
+            return absence;
+        }
+
         // Deleta (caso alguém lance errado)
         // isPrivilegedUser = true para Admin/Manager (podem apagar de qualquer um)
         public async Task DeleteAbsenceAsync(int id, string requesterUserId, bool isPrivilegedUser)

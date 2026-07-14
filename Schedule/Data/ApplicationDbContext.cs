@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Schedule.Models;
+using Schedule.Models.KnowledgeBase;
 
 namespace Schedule.Data
 {
@@ -28,6 +29,24 @@ namespace Schedule.Data
         public DbSet<NoticeAcknowledgment> NoticeByIdAcknowledgments { get; set; }
         public DbSet<NoticeComment> NoticeComments { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+
+        // ==========================================
+        // --- MÓDULO KNOWLEDGE BASE (Fases 1 a 3) ---
+        // ==========================================
+        public DbSet<KnowledgeCategory> KnowledgeCategories { get; set; }
+        public DbSet<KnowledgeTag> KnowledgeTags { get; set; }
+        public DbSet<KnowledgeArticle> KnowledgeArticles { get; set; }
+        public DbSet<KnowledgeArticleVersion> KnowledgeArticleVersions { get; set; }
+        public DbSet<KnowledgeArticleTag> KnowledgeArticleTags { get; set; }
+        public DbSet<KnowledgeArticleReference> KnowledgeArticleReferences { get; set; }
+        public DbSet<KnowledgeMedia> KnowledgeMedia { get; set; }
+        public DbSet<KnowledgeFavorite> KnowledgeFavorites { get; set; }
+        public DbSet<KnowledgeView> KnowledgeViews { get; set; }
+        public DbSet<KnowledgeComment> KnowledgeComments { get; set; }
+        public DbSet<KnowledgeHistory> KnowledgeHistories { get; set; }
+        public DbSet<KnowledgeArticleRead> KnowledgeArticleReads { get; set; }
+        public DbSet<KnowledgeBadge> KnowledgeBadges { get; set; }
+        public DbSet<UserKnowledgeBadge> UserKnowledgeBadges { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -104,6 +123,13 @@ namespace Schedule.Data
 
             modelBuilder.Entity<UserAbsence>()
                 .HasIndex(a => new { a.UserId, a.StartDate, a.EndDate });
+
+            // ==========================================
+            // --- INJEÇÃO DE CONFIGURAÇÕES (Fase 4) ---
+            // ==========================================
+            // Este comando encontra automaticamente as nossas classes de configuração 
+            // (KnowledgeArticleConfiguration, etc) dentro deste Assembly e aplica-as.
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         }
 
     }
