@@ -1,5 +1,5 @@
 ﻿using System;
-using Schedule.Models.Core;
+using Schedule.Models;
 
 namespace Schedule.Models.KnowledgeBase
 {

@@ -1,12 +1,19 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Quartz;
 using Schedule.Data;
+using Schedule.Interfaces.KnowledgeBase;
 using Schedule.Jobs;
 using Schedule.Models;
+using Schedule.Repositories.KnowledgeBase;
 using Schedule.Services;
+using Schedule.Services.KnowledgeBase;
 using Serilog;
+using System.Reflection;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +46,20 @@ builder.Services.AddHttpClient<HolidayService>();
 builder.Services.AddScoped<HolidayService>();
 builder.Services.AddScoped<NoticeService>();
 builder.Services.AddScoped<AbsenceService>();
+
+// Knowledge Base — Repositórios e Serviço
+builder.Services.AddScoped<IKnowledgeArticleRepository,  KnowledgeArticleRepository>();
+builder.Services.AddScoped<IKnowledgeCategoryRepository, KnowledgeCategoryRepository>();
+builder.Services.AddScoped<IKnowledgeTagRepository,      KnowledgeTagRepository>();
+builder.Services.AddScoped<IKnowledgeBaseService,        KnowledgeBaseService>();
+
+//automapper + fluentvalidation
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddProfile<Schedule.Mapping.KnowledgeBaseProfile>();
+});
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -77,12 +98,10 @@ builder.Services.AddQuartz(q =>
     var jobKey = new JobKey("SyncHolidaysJob");
     q.AddJob<SyncHolidaysJob>(opts => opts.WithIdentity(jobKey));
 
-
     q.AddTrigger(opts => opts
         .ForJob(jobKey)
         .WithIdentity("JanFirstTrigger")
         .WithCronSchedule("0 0 0 1 1 ?"));
-
 
     q.AddTrigger(opts => opts
         .ForJob(jobKey)
@@ -108,15 +127,21 @@ builder.Services.AddCors(options =>
 // ======================
 var app = builder.Build();
 
-// ==========================================
-// CORREÇÃO 3: Garante que os cargos (Admin, Manager, Standard, Viewer)
-// existem no banco assim que a API sobe. Sem isso, ninguém consegue
-// ser promovido a Admin/Manager pelo endpoint user-promoter.
-// ==========================================
 using (var scope = app.Services.CreateScope())
 {
-    await DbSeeder.SeedRolesAsync(scope.ServiceProvider);
-    await DbSeeder.SeedFirstAdminAsync(scope.ServiceProvider, app.Configuration);
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+        await DbSeeder.SeedRolesAsync(services);
+        await DbSeeder.SeedFirstAdminAsync(services, app.Configuration);
+        await DbSeeder.SeedKnowledgeBase(context);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Aviso: O banco de dados não está pronto ou as tabelas ainda não existem. O Seeding foi ignorado nesta execução.");
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -128,11 +153,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("PermitirFrontEnd");
 
-// ==========================================
-// CORREÇÃO 2: A ordem exata da Segurança
-// ==========================================
-app.UseAuthentication(); // 1º Lê o Token (Quem é você?)
-app.UseAuthorization();  // 2º Verifica as Roles (O que você pode fazer?)
+app.UseAuthentication();
+app.UseAuthorization();
 
 // ======================
 // ENDPOINTS

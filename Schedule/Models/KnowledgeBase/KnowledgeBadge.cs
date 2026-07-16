@@ -43,10 +43,7 @@ namespace Schedule.Models.KnowledgeBase
 
         public virtual KnowledgeCategory? Category { get; set; }
 
-        /* * Nota de Arquitetura:
-         * A lista que liga este selo aos usuários que o conquistaram será criada a seguir.
-         * Deixo comentado para manter a compilação do projeto ilesa neste exato momento.
-         */
-        // public virtual ICollection<UserKnowledgeBadge> UserBadges { get; set; } = new List<UserKnowledgeBadge>();
+        // Propriedade descomentada e declarada de forma limpa
+        public virtual ICollection<UserKnowledgeBadge> UserBadges { get; set; } = new List<UserKnowledgeBadge>();
     }
 }

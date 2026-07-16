@@ -72,5 +72,12 @@ namespace Schedule.Interfaces.KnowledgeBase
         /// Marca o artigo como lido, servindo de base para o sistema de gamificação (RB032, RB034).
         /// </summary>
         Task MarkArticleAsReadAsync(Guid articleId, string userId, CancellationToken cancellationToken = default);
+
+        // ==========================================
+        // --- GESTÃO DE TAGS ---
+        // ==========================================
+        Task<IEnumerable<KnowledgeTagResponse>> GetAllTagsAsync(CancellationToken cancellationToken = default);
+        Task<KnowledgeTagResponse> CreateTagAsync(CreateKnowledgeTagRequest request, CancellationToken cancellationToken = default);
+        Task DeleteTagAsync(Guid id, CancellationToken cancellationToken = default);
     }
 }

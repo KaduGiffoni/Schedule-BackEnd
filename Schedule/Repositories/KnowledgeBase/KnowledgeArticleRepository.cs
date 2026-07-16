@@ -11,10 +11,6 @@ using Schedule.Models.KnowledgeBase.Enums;
 
 namespace Schedule.Repositories.KnowledgeBase
 {
-    /// <summary>
-    /// Implementação do repositório de Artigos da Base de Conhecimento.
-    /// Isola as consultas do Entity Framework e otimiza buscas pesadas.
-    /// </summary>
     public class KnowledgeArticleRepository : IKnowledgeArticleRepository
     {
         private readonly ApplicationDbContext _context;
@@ -24,105 +20,82 @@ namespace Schedule.Repositories.KnowledgeBase
             _context = context;
         }
 
-        public async Task<KnowledgeArticle?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public async Task<KnowledgeArticle?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
             return await _context.KnowledgeArticles
+                .Include(a => a.CurrentVersion)
                 .Include(a => a.Category)
                 .Include(a => a.Author)
-                .Include(a => a.CurrentVersion)
-                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted, cancellationToken);
+                .Include(a => a.ArticleTags).ThenInclude(at => at.Tag)
+                .Include(a => a.References).ThenInclude(r => r.ReferencedArticle).ThenInclude(ra => ra.CurrentVersion)
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted, ct);
         }
 
-        public async Task<KnowledgeArticle?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default)
+        public async Task<KnowledgeArticle?> GetBySlugAsync(string slug, CancellationToken ct = default)
         {
             return await _context.KnowledgeArticles
+                .Include(a => a.CurrentVersion)
                 .Include(a => a.Category)
                 .Include(a => a.Author)
-                .Include(a => a.CurrentVersion)
-                .FirstOrDefaultAsync(a => a.Slug == slug && !a.IsDeleted, cancellationToken);
+                .Include(a => a.ArticleTags).ThenInclude(at => at.Tag)
+                .Include(a => a.References).ThenInclude(r => r.ReferencedArticle).ThenInclude(ra => ra.CurrentVersion)
+                .FirstOrDefaultAsync(a => a.Slug == slug && !a.IsDeleted, ct);
         }
 
         public async Task<(IEnumerable<KnowledgeArticle> Articles, int TotalCount)> SearchAsync(
-            string? searchTerm,
-            Guid? categoryId,
-            IEnumerable<Guid>? tagIds,
-            ArticleStatus? status,
-            int pageNumber,
-            int pageSize,
-            CancellationToken cancellationToken = default)
+            string? searchTerm, Guid? categoryId, IEnumerable<Guid>? tagIds, ArticleStatus? status, int pageNumber, int pageSize, CancellationToken ct = default)
         {
-            // Inicia a query base filtrando os deletados logicamente
             var query = _context.KnowledgeArticles
-                .Include(a => a.Category)
                 .Include(a => a.CurrentVersion)
-                .Where(a => !a.IsDeleted)
-                .AsNoTracking(); // Otimização: Apenas leitura, não precisa rastrear alterações
+                .Include(a => a.Category)
+                .Include(a => a.Author)
+                .Where(a => !a.IsDeleted);
 
-            // Filtro de Status
             if (status.HasValue)
-            {
                 query = query.Where(a => a.Status == status.Value);
-            }
 
-            // Filtro de Categoria
             if (categoryId.HasValue)
-            {
                 query = query.Where(a => a.CategoryId == categoryId.Value);
-            }
 
-            // Filtro de Tags (Trabalhando com a tabela de junção)
-            if (tagIds != null && tagIds.Any())
-            {
-                query = query.Where(a => _context.KnowledgeArticleTags
-                                         .Any(kat => kat.ArticleId == a.Id && tagIds.Contains(kat.TagId)));
-            }
-
-            // Pesquisa Textual Otimizada (Full-Text Search)
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                // NOTA: EF.Functions.FreeText exige que o índice Full-Text esteja configurado no SQL Server.
-                // Isso garante uma busca que ignora acentos, maiúsculas e busca por partes do texto.
                 query = query.Where(a =>
-                    EF.Functions.FreeText(a.Title, searchTerm) ||
-                    (a.CurrentVersion != null && EF.Functions.FreeText(a.CurrentVersion.Summary, searchTerm)));
+                    (a.CurrentVersion != null && a.CurrentVersion.Title.Contains(searchTerm)) ||
+                    (a.CurrentVersion != null && a.CurrentVersion.Summary.Contains(searchTerm)));
             }
 
-            // Ordenação padrão (mais recentes ou mais acessados primeiro)
-            query = query.OrderByDescending(a => a.CreatedAt);
+            int totalCount = await query.CountAsync(ct);
 
-            // Conta o total de registros ANTES de paginar
-            var totalCount = await query.CountAsync(cancellationToken);
-
-            // Aplica a Paginação
             var articles = await query
+                .OrderByDescending(a => a.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync(cancellationToken);
+                .ToListAsync(ct);
 
             return (articles, totalCount);
         }
 
-        public async Task<KnowledgeArticle> AddAsync(KnowledgeArticle article, CancellationToken cancellationToken = default)
+        public async Task<KnowledgeArticle> AddAsync(KnowledgeArticle article, CancellationToken ct = default)
         {
-            await _context.KnowledgeArticles.AddAsync(article, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.KnowledgeArticles.AddAsync(article, ct);
+            await _context.SaveChangesAsync(ct);
             return article;
         }
 
-        public async Task UpdateAsync(KnowledgeArticle article, CancellationToken cancellationToken = default)
+        public async Task UpdateAsync(KnowledgeArticle article, CancellationToken ct = default)
         {
             _context.KnowledgeArticles.Update(article);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.SaveChangesAsync(ct);
         }
 
-        public async Task SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        public async Task SoftDeleteAsync(Guid id, CancellationToken ct = default)
         {
-            var article = await _context.KnowledgeArticles.FindAsync(new object[] { id }, cancellationToken);
+            var article = await _context.KnowledgeArticles.FirstOrDefaultAsync(a => a.Id == id, ct);
             if (article != null)
             {
-                article.IsDeleted = true; // Aplicação da Regra de Negócio de Soft Delete
+                article.IsDeleted = true;
                 _context.KnowledgeArticles.Update(article);
-                await _context.SaveChangesAsync(cancellationToken);
+                await _context.SaveChangesAsync(ct);
             }
         }
     }

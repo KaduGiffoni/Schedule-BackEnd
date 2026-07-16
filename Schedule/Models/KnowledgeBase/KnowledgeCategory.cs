@@ -46,5 +46,7 @@ namespace Schedule.Models.KnowledgeBase
          * A coleção de ICollection<KnowledgeArticle> será adicionada posteriormente (via Fluent API ou aqui),
          * após a criação da entidade principal na Fase 2 para manter a compilação limpa sem dependências circulares precoces.
          */
+
+        public virtual ICollection<KnowledgeBadge> Badges { get; set; } = new List<KnowledgeBadge>();
     }
 }

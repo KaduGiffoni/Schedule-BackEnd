@@ -82,6 +82,33 @@ namespace Schedule.Services.KnowledgeBase
             }
         }
 
+        public async Task<IEnumerable<KnowledgeTagResponse>> GetAllTagsAsync(CancellationToken cancellationToken = default)
+        {
+            var tags = await _tagRepo.GetAllAsync(cancellationToken);
+            return _mapper.Map<IEnumerable<KnowledgeTagResponse>>(tags);
+        }
+
+        public async Task<KnowledgeTagResponse> CreateTagAsync(CreateKnowledgeTagRequest request, CancellationToken cancellationToken = default)
+        {
+            var tag = new KnowledgeTag
+            {
+                Name = request.Name,
+                Slug = GenerateSlug(request.Name)
+            };
+
+            await _tagRepo.AddAsync(tag, cancellationToken);
+            return _mapper.Map<KnowledgeTagResponse>(tag);
+        }
+
+        public async Task DeleteTagAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var tag = await _tagRepo.GetByIdAsync(id, cancellationToken);
+            if (tag != null)
+            {
+                await _tagRepo.DeleteAsync(tag, cancellationToken);
+            }
+        }
+
         #endregion
 
         #region --- GESTÃO DE ARTIGOS ---
