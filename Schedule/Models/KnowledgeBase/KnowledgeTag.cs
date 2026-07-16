@@ -22,12 +22,26 @@ namespace Schedule.Models.KnowledgeBase
         /// </summary>
         public string Slug { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Data de criação da Tag.
+        /// </summary>
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+        /// <summary>
+        /// Última atualização da Tag.
+        /// </summary>
+        public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+        /// <summary>
+        /// Indica se a Tag foi removida logicamente.
+        /// </summary>
+        public bool IsDeleted { get; set; }
+
         // --- Propriedades de Navegação ---
 
-        /* * Nota de Arquitetura:
-         * A coleção que liga as Tags aos Artigos usará uma tabela de junção explícita (KnowledgeArticleTag).
-         * Deixarei comentado por enquanto para garantir a compilação até gerarmos a entidade correspondente no próximo passo.
-         */
-        // public virtual ICollection<KnowledgeArticleTag> ArticleTags { get; set; } = new List<KnowledgeArticleTag>();
+        /// <summary>
+        /// Relação entre esta Tag e os artigos que a utilizam.
+        /// </summary>
+        public virtual ICollection<KnowledgeArticleTag> ArticleTags { get; set; } = new List<KnowledgeArticleTag>();
     }
 }

@@ -19,8 +19,14 @@ namespace Schedule.Models.KnowledgeBase
         public Guid TagId { get; set; }
 
         // --- Propriedades de Navegação ---
-
+        /// <summary>
+        /// Artigo associado à Tag.
+        /// </summary>
         public virtual KnowledgeArticle? Article { get; set; }
+
+        /// <summary>
+        /// Tag associada ao Artigo.
+        /// </summary>
         public virtual KnowledgeTag? Tag { get; set; }
     }
 }
