@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Schedule.Models
+namespace Schedule.Models.Communication
 {
     public class Notification
     {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Schedule.Models
+namespace Schedule.Models.Scheduling
 {
     public enum RequestStatus
     {

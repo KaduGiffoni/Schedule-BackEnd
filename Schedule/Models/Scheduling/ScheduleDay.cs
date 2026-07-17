@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Schedule.Models
+namespace Schedule.Models.Scheduling
 {
     public class ScheduleDay
     {

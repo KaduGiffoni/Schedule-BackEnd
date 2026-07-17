@@ -1,4 +1,4 @@
-﻿namespace Schedule.Models
+﻿namespace Schedule.Models.Scheduling
 {
     public class Holiday
     {

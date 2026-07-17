@@ -1,8 +1,11 @@
+global using Schedule.Models.Scheduling;
+global using Schedule.Models.Communication;
+
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi; // <-- VOLTOU AO SEU ORIGINAL
 using Quartz;
 using Schedule.Data;
 using Schedule.Interfaces.KnowledgeBase;
@@ -14,8 +17,8 @@ using Schedule.Services.KnowledgeBase;
 using Serilog;
 using System.Reflection;
 
-
 var builder = WebApplication.CreateBuilder(args);
+
 
 // ======================
 // LOGGING (Serilog)

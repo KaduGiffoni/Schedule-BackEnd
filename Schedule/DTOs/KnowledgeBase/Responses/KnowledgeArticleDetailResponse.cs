@@ -8,93 +8,24 @@ namespace Schedule.DTOs.KnowledgeBase.Responses
     /// Objeto de transferência de dados (DTO) para a leitura completa do artigo.
     /// Contém o conteúdo pesado e todas as relações (Tags e Pré-requisitos).
     /// </summary>
-    public class KnowledgeArticleDetailResponse
+    public record KnowledgeArticleDetailResponse
     {
-        /// <summary>
-        /// ID do artigo raiz.
-        /// </summary>
-        public Guid Id { get; set; }
-
-        /// <summary>
-        /// Título completo do procedimento.
-        /// </summary>
-        public string Title { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Slug (URL amigável) para navegação no frontend.
-        /// </summary>
-        public string Slug { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Resumo do que o artigo aborda.
-        /// </summary>
-        public string Summary { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Conteúdo detalhado da versão atual (Markdown ou HTML).
-        /// </summary>
-        public string Content { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Nível de dificuldade da operação.
-        /// </summary>
-        public DifficultyLevel Difficulty { get; set; }
-
-        /// <summary>
-        /// Tempo estimado de execução/leitura em minutos.
-        /// </summary>
-        public int EstimatedTimeInMinutes { get; set; }
-
-        /// <summary>
-        /// Status atual de visibilidade.
-        /// </summary>
-        public ArticleStatus Status { get; set; }
-
-        /// <summary>
-        /// ID da Categoria.
-        /// </summary>
-        public Guid CategoryId { get; set; }
-
-        /// <summary>
-        /// Nome da Categoria.
-        /// </summary>
-        public string CategoryName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Nome do criador original do procedimento.
-        /// </summary>
-        public string AuthorName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Total de visualizações acumuladas.
-        /// </summary>
-        public int ViewCount { get; set; }
-
-        /// <summary>
-        /// Total de vezes que o artigo foi favoritado.
-        /// </summary>
-        public int FavoriteCount { get; set; }
-
-        /// <summary>
-        /// Data em que o artigo foi criado originalmente.
-        /// </summary>
-        public DateTime CreatedAt { get; set; }
-
-        /// <summary>
-        /// Data da última versão/atualização do artigo.
-        /// </summary>
-        public DateTime LastUpdatedAt { get; set; }
-
-        /// <summary>
-        /// Lista das tags (palavras-chave) associadas ao artigo.
-        /// Retorna um DTO simples contendo o Id e o Name da tag.
-        /// </summary>
-        public IEnumerable<KnowledgeTagResponse> Tags { get; set; } = new List<KnowledgeTagResponse>();
-
-        /// <summary>
-        /// Lista de artigos referenciados (pré-requisitos).
-        /// Reutiliza o DTO de resumo para renderizar cartões ricos no frontend.
-        /// </summary>
-        public IEnumerable<KnowledgeArticleSummaryResponse> References { get; set; } = new List<KnowledgeArticleSummaryResponse>();
+        public Guid Id { get; init; }
+        public string Title { get; init; } = string.Empty;
+        public string Slug { get; init; } = string.Empty;
+        public string Summary { get; init; } = string.Empty;
+        public string Content { get; init; } = string.Empty;
+        public DifficultyLevel Difficulty { get; init; }
+        public int EstimatedTimeInMinutes { get; init; }
+        public ArticleStatus Status { get; init; }
+        public Guid CategoryId { get; init; }
+        public string CategoryName { get; init; } = string.Empty;
+        public string AuthorName { get; init; } = string.Empty;
+        public int ViewCount { get; init; }
+        public int FavoriteCount { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime LastUpdatedAt { get; init; }
+        public IEnumerable<KnowledgeTagResponse> Tags { get; init; } = [];
+        public IEnumerable<KnowledgeArticleSummaryResponse> References { get; init; } = [];
     }
 }
