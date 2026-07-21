@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Schedule.Data;
 using Schedule.DTOs;
 using Schedule.Models;
@@ -17,7 +17,7 @@ namespace Schedule.Services
         // ==========================================
         // 1. CRIAR UM NOVO AVISO
         // ==========================================
-        public async Task<Notice> CreateNoticeAsync(string title, string content, string type, string userId)
+        public async Task<Notice> CreateNoticeAsync(string title, string content, string type, string userId, List<int> letterIds)
         {
             var creator = await _context.Users.FindAsync(userId);
 
@@ -38,10 +38,34 @@ namespace Schedule.Services
             _context.Notices.Add(notice);
             await _context.SaveChangesAsync();
 
-            // A MÁGICA ACONTECE AQUI:
+            // Lógica antiga (mantida por retrocompatibilidade se for usado 'Turno')
             if (type == "Turno")
             {
                 await NotifyNextShiftAsync(notice, sectorId);
+            }
+
+            // NOVA LÓGICA: Se enviou as letterIds explícitas (Geral ou Turno), notificar essas equipes
+            if (letterIds != null && letterIds.Any())
+            {
+                var targetUsers = await _context.Users
+                    .Where(u => u.LetterId.HasValue && letterIds.Contains(u.LetterId.Value))
+                    .ToListAsync();
+
+                var notifications = targetUsers.Select(u => new Notification
+                {
+                    TargetUserId = u.Id,
+                    Message = $"Você foi marcado em um novo aviso de {creator?.UserName ?? "um colega"}.",
+                    Type = "Notice",
+                    ReferenceNoticeId = notice.Id,
+                    CreatedAt = DateTime.Now,
+                    IsRead = false
+                }).ToList();
+
+                if (notifications.Any())
+                {
+                    _context.Notifications.AddRange(notifications);
+                    await _context.SaveChangesAsync();
+                }
             }
 
             return notice;

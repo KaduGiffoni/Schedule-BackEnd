@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,8 +36,9 @@ namespace Schedule.Interfaces.KnowledgeBase
             int pageSize,
             CancellationToken cancellationToken = default);
 
-        Task<KnowledgeArticleDetailResponse> GetArticleByIdAsync(Guid id, CancellationToken cancellationToken = default);
-        Task<KnowledgeArticleDetailResponse> GetArticleBySlugAsync(string slug, CancellationToken cancellationToken = default);
+        Task<KnowledgeArticleDetailResponse> GetArticleByIdAsync(Guid id, string? userId = null, CancellationToken cancellationToken = default);
+        Task<KnowledgeArticleDetailResponse> GetArticleBySlugAsync(string slug, string? userId = null, CancellationToken cancellationToken = default);
+        Task<IEnumerable<KnowledgeArticleHistoryResponse>> GetArticleHistoryAsync(Guid articleId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Cria o artigo raiz e a sua primeira versão de conteúdo.
@@ -70,8 +71,14 @@ namespace Schedule.Interfaces.KnowledgeBase
 
         /// <summary>
         /// Marca o artigo como lido, servindo de base para o sistema de gamificação (RB032, RB034).
+        /// Retorna true se uma insígnia foi recém-desbloqueada nesta ação.
         /// </summary>
-        Task MarkArticleAsReadAsync(Guid articleId, string userId, CancellationToken cancellationToken = default);
+        Task<bool> MarkArticleAsReadAsync(Guid articleId, string userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Obtém o progresso das conquistas do utilizador.
+        /// </summary>
+        Task<IEnumerable<KnowledgeBadgeResponse>> GetMyBadgesAsync(string userId, CancellationToken cancellationToken = default);
 
         // ==========================================
         // --- GESTÃO DE TAGS ---

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -142,6 +142,27 @@ namespace Schedule.Controllers
             }
 
            
+            return BadRequest(result.Errors);
+        }
+
+        [HttpPut("admin-reset-password")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AdminResetPassword([FromBody] Schedule.DTOs.Core.AdminResetPasswordDTO request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                return NotFound(new { Message = "Usuário não encontrado." });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { Message = "Senha do usuário alterada com sucesso pelo Administrador!" });
+            }
+
             return BadRequest(result.Errors);
         }
     }

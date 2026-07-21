@@ -6,6 +6,7 @@ using Moq;
 using Xunit;
 using Schedule.Data;
 using Schedule.Models;
+using Schedule.Models.Scheduling;
 using Schedule.Services;
 using Schedule.DTOs;
 

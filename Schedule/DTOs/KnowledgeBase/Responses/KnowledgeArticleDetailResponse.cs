@@ -27,5 +27,7 @@ namespace Schedule.DTOs.KnowledgeBase.Responses
         public DateTime LastUpdatedAt { get; init; }
         public IEnumerable<KnowledgeTagResponse> Tags { get; init; } = [];
         public IEnumerable<KnowledgeArticleSummaryResponse> References { get; init; } = [];
+        public bool IsRead { get; set; }
+        public bool IsFavorited { get; set; }
     }
 }

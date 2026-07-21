@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schedule.Interfaces.KnowledgeBase;
 using System;
@@ -56,7 +56,7 @@ public class KnowledgeInteractionsController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        await _service.MarkArticleAsReadAsync(articleId, userId, ct);
-        return Ok();
+        bool badgeUnlocked = await _service.MarkArticleAsReadAsync(articleId, userId, ct);
+        return Ok(new { isRead = true, badgeUnlocked = badgeUnlocked });
     }
 }

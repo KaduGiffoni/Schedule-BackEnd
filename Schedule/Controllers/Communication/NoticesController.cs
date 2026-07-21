@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schedule.DTOs;
 using Schedule.Services;
@@ -45,7 +45,8 @@ namespace Schedule.Controllers
                 request.Title,
                 request.Content,
                 request.Type,
-                loggedInUserId
+                loggedInUserId,
+                request.LetterIds
             );
 
             return Ok(new { Mensagem = "Aviso publicado!", Id = notice.Id });

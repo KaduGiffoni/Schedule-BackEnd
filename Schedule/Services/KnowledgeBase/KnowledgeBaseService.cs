@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -128,20 +128,53 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         return (mappedArticles, totalCount);
     }
 
-    public async Task<KnowledgeArticleDetailResponse> GetArticleByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<KnowledgeArticleDetailResponse> GetArticleByIdAsync(Guid id, string? userId = null, CancellationToken cancellationToken = default)
     {
         var article = await _articleRepo.GetByIdAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Artigo com Id {id} não encontrado.");
 
-        return _mapper.Map<KnowledgeArticleDetailResponse>(article);
+        var response = _mapper.Map<KnowledgeArticleDetailResponse>(article);
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            response.IsRead = await _context.KnowledgeArticleReads
+                .AnyAsync(r => r.ArticleId == id && r.UserId == userId, cancellationToken);
+
+            response.IsFavorited = await _context.KnowledgeFavorites
+                .AnyAsync(f => f.ArticleId == id && f.UserId == userId, cancellationToken);
+        }
+
+        return response;
     }
 
-    public async Task<KnowledgeArticleDetailResponse> GetArticleBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    public async Task<KnowledgeArticleDetailResponse> GetArticleBySlugAsync(string slug, string? userId = null, CancellationToken cancellationToken = default)
     {
         var article = await _articleRepo.GetBySlugAsync(slug, cancellationToken)
             ?? throw new KeyNotFoundException($"Artigo com Slug '{slug}' não encontrado.");
 
-        return _mapper.Map<KnowledgeArticleDetailResponse>(article);
+        var response = _mapper.Map<KnowledgeArticleDetailResponse>(article);
+        
+        if (!string.IsNullOrEmpty(userId))
+        {
+            response.IsRead = await _context.KnowledgeArticleReads
+                .AnyAsync(r => r.ArticleId == article.Id && r.UserId == userId, cancellationToken);
+
+            response.IsFavorited = await _context.KnowledgeFavorites
+                .AnyAsync(f => f.ArticleId == article.Id && f.UserId == userId, cancellationToken);
+        }
+
+        return response;
+    }
+
+    public async Task<IEnumerable<KnowledgeArticleHistoryResponse>> GetArticleHistoryAsync(Guid articleId, CancellationToken cancellationToken = default)
+    {
+        var versions = await _context.KnowledgeArticleVersions
+            .Include(v => v.Editor)
+            .Where(v => v.ArticleId == articleId)
+            .OrderByDescending(v => v.VersionNumber)
+            .ToListAsync(cancellationToken);
+
+        return _mapper.Map<IEnumerable<KnowledgeArticleHistoryResponse>>(versions);
     }
 
     public async Task<KnowledgeArticleDetailResponse> CreateArticleAsync(CreateKnowledgeArticleRequest request, string authorId, CancellationToken cancellationToken = default)
@@ -191,7 +224,7 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         // 6. Log assíncrono isolado
         await LogHistoryAsync(article.Id, authorId, "Artigo Criado", cancellationToken);
 
-        return await GetArticleByIdAsync(article.Id, cancellationToken);
+        return await GetArticleByIdAsync(article.Id, userId: null, cancellationToken);
     }
 
     public async Task<KnowledgeArticleDetailResponse> UpdateArticleAsync(UpdateKnowledgeArticleRequest request, string editorId, CancellationToken cancellationToken = default)
@@ -246,7 +279,7 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         await InvalidateBadgesForCategoryAsync(article.CategoryId, cancellationToken);
         await LogHistoryAsync(article.Id, editorId, $"Nova versão ({newVersion.VersionNumber}) gerada.", cancellationToken);
 
-        return await GetArticleByIdAsync(article.Id, cancellationToken);
+        return await GetArticleByIdAsync(article.Id, userId: null, cancellationToken);
     }
 
     public async Task SoftDeleteArticleAsync(Guid id, string userId, CancellationToken cancellationToken = default)
@@ -297,20 +330,106 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task MarkArticleAsReadAsync(Guid articleId, string userId, CancellationToken cancellationToken = default)
+    public async Task<bool> MarkArticleAsReadAsync(Guid articleId, string userId, CancellationToken cancellationToken = default)
     {
         bool alreadyRead = await _context.KnowledgeArticleReads
             .AnyAsync(r => r.ArticleId == articleId && r.UserId == userId, cancellationToken);
 
-        if (alreadyRead) return;
+        if (alreadyRead) return false;
 
         // Adiciona o recibo de leitura
         await _context.KnowledgeArticleReads.AddAsync(new KnowledgeArticleRead { ArticleId = articleId, UserId = userId }, cancellationToken);
 
-        // Dispara análise da gamificação ANTES do commit, para fazer apenas 1 SaveChangesAsync
-        await ProcessGamificationAsync(articleId, userId, cancellationToken);
-
+        // Salvar no banco ANTES da gamificação para o Count() funcionar corretamente
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Dispara análise da gamificação
+        bool badgeUnlocked = await ProcessGamificationAsync(articleId, userId, cancellationToken);
+
+        
+        return badgeUnlocked;
+    }
+
+    public async Task<IEnumerable<KnowledgeBadgeResponse>> GetMyBadgesAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        // Auto-gera insígnias para categorias que não possuem uma (para que não fique vazia a tela)
+        var categoriesWithoutBadges = await _context.KnowledgeCategories
+            .Where(c => !_context.KnowledgeBadges.Any(b => b.CategoryId == c.Id))
+            .ToListAsync(cancellationToken);
+
+        if (categoriesWithoutBadges.Any())
+        {
+            foreach (var cat in categoriesWithoutBadges)
+            {
+                _context.KnowledgeBadges.Add(new KnowledgeBadge
+                {
+                    Name = $"Especialista em {cat.Name}",
+                    Description = $"Você leu todos os procedimentos da categoria {cat.Name}.",
+                    CategoryId = cat.Id
+                });
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        var allBadges = await _context.KnowledgeBadges
+            .Include(b => b.Category)
+            .ToListAsync(cancellationToken);
+
+        var userBadges = await _context.UserKnowledgeBadges
+            .Where(ub => ub.UserId == userId)
+            .ToDictionaryAsync(ub => ub.BadgeId, cancellationToken);
+
+        var response = new List<KnowledgeBadgeResponse>();
+
+        foreach (var badge in allBadges)
+        {
+            var userBadge = userBadges.ContainsKey(badge.Id) ? userBadges[badge.Id] : null;
+
+            var badgeDto = new KnowledgeBadgeResponse
+            {
+                BadgeId = badge.Id,
+                Name = badge.Name,
+                Description = badge.Description,
+                ImageUrl = badge.ImageUrl,
+                CategoryId = badge.CategoryId,
+                CategoryName = badge.Category?.Name ?? string.Empty,
+                IsEarned = userBadge != null,
+                IsActive = userBadge?.IsActive ?? false,
+                EarnedAt = userBadge?.EarnedAt,
+                LastUpdatedAt = userBadge?.LastUpdatedAt
+            };
+
+            // Artigos da categoria que estão publicados e não deletados
+            var categoryArticles = await _context.KnowledgeArticles
+                .Include(a => a.CurrentVersion)
+                .Where(a => a.CategoryId == badge.CategoryId && a.Status == ArticleStatus.Published && !a.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            // IDs lidos pelo usuário
+            var readArticleIds = await _context.KnowledgeArticleReads
+                .Where(r => r.UserId == userId && r.Article.CategoryId == badge.CategoryId)
+                .Select(r => r.ArticleId)
+                .ToListAsync(cancellationToken);
+
+            badgeDto.TotalArticles = categoryArticles.Count;
+            // Apenas considerar como "lidos" os artigos que ainda existem e estão publicados
+            badgeDto.ReadArticles = categoryArticles.Count(a => readArticleIds.Contains(a.Id));
+
+            // Se o usuário não tem a badge ou ela está inativa, detalhar o que falta ler
+            if (!badgeDto.IsActive)
+            {
+                var missingArticles = categoryArticles
+                    .Where(a => !readArticleIds.Contains(a.Id))
+                    .Select(a => _mapper.Map<KnowledgeArticleSummaryResponse>(a))
+                    .ToList();
+
+                badgeDto.MissingArticles = missingArticles;
+            }
+
+            response.Add(badgeDto);
+        }
+
+        return response.OrderByDescending(b => b.IsActive).ThenByDescending(b => b.EarnedAt).ToList();
     }
 
     #endregion
@@ -329,20 +448,33 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task ProcessGamificationAsync(Guid articleId, string userId, CancellationToken cancellationToken)
+    private async Task<bool> ProcessGamificationAsync(Guid articleId, string userId, CancellationToken cancellationToken)
     {
         var article = await _context.KnowledgeArticles.FindAsync(new object[] { articleId }, cancellationToken);
-        if (article == null) return;
+        if (article == null) return false;
 
         var badge = await _context.KnowledgeBadges.FirstOrDefaultAsync(b => b.CategoryId == article.CategoryId, cancellationToken);
-        if (badge == null) return;
+        if (badge == null)
+        {
+            var category = await _context.KnowledgeCategories.FindAsync(new object[] { article.CategoryId }, cancellationToken);
+            if (category == null) return false;
+
+            badge = new KnowledgeBadge
+            {
+                Name = $"Especialista em {category.Name}",
+                Description = $"Você leu todos os procedimentos da categoria {category.Name}.",
+                CategoryId = category.Id
+            };
+            await _context.KnowledgeBadges.AddAsync(badge, cancellationToken);
+            // Salva logo para podermos referenciar o Id
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         var totalArticlesInCategory = await _context.KnowledgeArticles
             .CountAsync(a => a.CategoryId == article.CategoryId && a.Status == ArticleStatus.Published && !a.IsDeleted, cancellationToken);
 
-        // +1 no articlesReadByUser pois o recibo atual (deste request) já está rastreado no contexto mas ainda não foi salvo.
         var articlesReadByUser = await _context.KnowledgeArticleReads
-            .CountAsync(r => r.UserId == userId && r.Article.CategoryId == article.CategoryId && r.Article.Status == ArticleStatus.Published && !r.Article.IsDeleted, cancellationToken) + 1;
+            .CountAsync(r => r.UserId == userId && r.Article.CategoryId == article.CategoryId && r.Article.Status == ArticleStatus.Published && !r.Article.IsDeleted, cancellationToken);
 
         if (articlesReadByUser >= totalArticlesInCategory && totalArticlesInCategory > 0)
         {
@@ -352,14 +484,19 @@ public class KnowledgeBaseService : IKnowledgeBaseService
             if (userBadge == null)
             {
                 await _context.UserKnowledgeBadges.AddAsync(new UserKnowledgeBadge { BadgeId = badge.Id, UserId = userId, IsActive = true }, cancellationToken);
+                return true; // Acabou de desbloquear pela primeira vez
             }
             else
             {
+                bool wasInactive = !userBadge.IsActive;
                 userBadge.IsActive = true;
                 userBadge.LastUpdatedAt = DateTime.UtcNow;
                 _context.UserKnowledgeBadges.Update(userBadge);
+                return wasInactive; // Se estava inativa e ativou, retorna true para comemorar de novo
             }
         }
+        
+        return false;
     }
 
     private async Task InvalidateBadgesForCategoryAsync(Guid categoryId, CancellationToken cancellationToken)

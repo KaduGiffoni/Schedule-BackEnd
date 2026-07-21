@@ -1,4 +1,4 @@
-﻿namespace Schedule.DTOs
+namespace Schedule.DTOs
 {
     // 1. O que o React ENVIA para o C# ao criar um aviso
     public class NoticeCreateDTO
@@ -6,6 +6,7 @@
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty; // "Geral" ou "Turno"
+        public List<int> LetterIds { get; set; } = new();
     }
 
     // 2. O que o C# DEVOLVE para o React desenhar os cards na tela

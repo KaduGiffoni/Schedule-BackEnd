@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Schedule.DTOs.KnowledgeBase.Requests;
 using Schedule.DTOs.KnowledgeBase.Responses;
 using Schedule.Models.KnowledgeBase;
@@ -97,5 +97,12 @@ public class KnowledgeBaseProfile : Profile
 
         CreateMap<CreateKnowledgeArticleRequest, KnowledgeArticle>();
         CreateMap<UpdateKnowledgeArticleRequest, KnowledgeArticle>();
+
+        // ==========================================
+        // --- HISTÓRICO DE VERSÕES ---
+        // ==========================================
+        CreateMap<KnowledgeArticleVersion, KnowledgeArticleHistoryResponse>()
+            .ForMember(dest => dest.Version, opt => opt.MapFrom(src => src.VersionNumber))
+            .ForMember(dest => dest.EditorName, opt => opt.MapFrom(src => src.Editor != null ? src.Editor.UserName : string.Empty));
     }
 }

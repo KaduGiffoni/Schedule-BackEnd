@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schedule.DTOs.KnowledgeBase.Requests;
 using Schedule.Interfaces.KnowledgeBase;
@@ -46,7 +46,17 @@ public class KnowledgeArticlesController : ControllerBase
     [HttpGet("{id:guid}")] // Adicionado restrição :guid para segurança de roteamento
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        return Ok(await _service.GetArticleByIdAsync(id, ct));
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _service.GetArticleByIdAsync(id, userId, ct));
+    }
+
+    /// <summary>
+    /// Obtém o histórico de versões de um artigo pelo ID.
+    /// </summary>
+    [HttpGet("{id:guid}/history")]
+    public async Task<IActionResult> GetHistory(Guid id, CancellationToken ct)
+    {
+        return Ok(await _service.GetArticleHistoryAsync(id, ct));
     }
 
     /// <summary>
